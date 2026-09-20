@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consolidador de Cartas y Mensajes - Cita con Dios</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PapaParse para leer CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- pdf-lib para manipular y unir PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <!-- Mammoth.js para procesar archivos .docx -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- html2canvas para renderizar docx a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+    <div class="max-w-4xl mx-auto py-10 px-4">
+        <!-- Encabezado -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
+            <h1 class="text-2xl font-bold text-indigo-700 mb-2">Consolidador de Cartas a PDF</h1>
+            <p class="text-slate-600 text-sm">
+                Sube tu archivo CSV. La aplicación descargará las cartas (PDF, DOCX o imágenes), estampará el 
+                <strong>Remitente</strong>, <strong>Destinatario</strong> e <strong>ID de Entrada</strong> en la esquina de cada página, y generará un único archivo PDF consolidado para impresión.
+            </p>
+        </div>
+
+        <!-- Panel de carga -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Selecciona tu archivo CSV:</label>
+                <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-slate-500
+                    file:mr-4 file:py-2.5 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-indigo-50 file:text-indigo-700
+                    hover:file:bg-indigo-100 cursor-pointer border border-slate-300 rounded-lg"/>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Posición de la etiqueta:</label>
+                    <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                        <option value="top-right">Esquina Superior Derecha</option>
+                        <option value="top-left">Esquina Superior Izquierda</option>
+                        <option value="bottom-right">Esquina Inferior Derecha</option>
+                        <option value="bottom-left">Esquina Inferior Izquierda</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">CORS Proxy (para evitar bloqueos):</label>
+                    <select id="corsProxy" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                        <option value="https://corsproxy.io/?">corsproxy.io (Recomendado)</option>
+                        <option value="https://api.allorigins.win/raw?url=">allorigins.win</option>
+                        <option value="">Sin Proxy (Directo)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="processBtn" disabled class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold rounded-lg shadow transition duration-200 flex items-center justify-center gap-2">
+                <span>Procesar y Unir Documentos</span>
+            </button>
+        </div>
+
+        <!-- Estado / Progreso -->
+        <div id="statusCard" class="hidden bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
+            <h2 class="text-lg font-semibold text-slate-700 mb-3" id="statusTitle">Procesando...</h2>
+            <div class="w-full bg-slate-200 rounded-full h-3 mb-4 overflow-hidden">
+                <div id="progressBar" class="bg-indigo-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="statusText" class="text-sm text-slate-600 font-mono bg-slate-50 p-3 rounded border border-slate-200 max-h-40 overflow-y-auto"></p>
+        </div>
+
+        <!-- Previsualización y Descarga -->
+        <div id="downloadCard" class="hidden bg-emerald-50 rounded-xl shadow-md p-6 border border-emerald-200 text-center">
+            <h2 class="text-xl font-bold text-emerald-800 mb-2">¡Documento Consolidado Listo!</h2>
+            <p class="text-emerald-700 text-sm mb-4">Se han unido correctamente todos los registros y se agregaron las etiquetas correspondientes.</p>
+            <a id="downloadBtn" target="_blank" class="inline-flex items-center gap-2 py-3 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-lg transition duration-200 cursor-pointer">
+                 Descargar PDF Consolidado
+            </a>
+        </div>
+    </div>
+
+    <!-- Contenedor oculto para renderizado de DOCX -->
+    <div id="hiddenRenderArea" style="position: absolute; left: -9999px; top: -9999px; width: 800px; background: white; padding: 40px;"></div>
+
+    <script>
+        const csvFileInput = document.getElementById('csvFile');
+        const processBtn = document.getElementById('processBtn');
+        const statusCard = document.getElementById('statusCard');
+        const progressBar = document.getElementById('progressBar');
+        const statusText = document.getElementById('statusText');
+        const statusTitle = document.getElementById('statusTitle');
+        const downloadCard = document.getElementById('downloadCard');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let parsedData = [];
+
+        csvFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                delimiter: ";", // Soporta delimitador por punto y coma
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        parsedData = results.data;
+                        processBtn.disabled = false;
+                        alert(`Se detectaron ${parsedData.length} registros en el archivo CSV.`);
+                    } else {
+                        alert("No se pudieron extraer datos del CSV. Verifica el formato.");
+                    }
+                }
+            });
+        });
+
+        processBtn.addEventListener('click', async () => {
+            if (parsedData.length === 0) return;
+
+            processBtn.disabled = true;
+            statusCard.classList.remove('hidden');
+            downloadCard.classList.add('hidden');
+            progressBar.style.width = '0%';
+            statusText.innerText = 'Iniciando proceso...\n';
+
+            try {
+                const mergedPdf = await PDFLib.PDFDocument.create();
+                const proxy = document.getElementById('corsProxy').value;
+                const labelPos = document.getElementById('labelPosition').value;
+
+                for (let i = 0; i < parsedData.length; i++) {
+                    const row = parsedData[i];
+                    const progress = Math.round(((i + 1) / parsedData.length) * 100);
+                    progressBar.style.width = `${progress}%`;
+
+                    // Mapeo flexible de campos del CSV
+                    const remNombre = row['REMITENTE Nombre'] || row['REMITENTE NOMBRE'] || row['Remitente Nombre'] || '';
+                    const remApellido = row['REMITENTE Apellidos'] || row['REMITENTE APELLIDOS'] || row['Remitente Apellidos'] || '';
+                    const destNombre = row['DESTINATARIO Nombre'] || row['DESTINATARIO NOMBRE'] || row['Destinatario Nombre'] || '';
+                    const destApellido = row['DESTINATARIO Apellidos'] || row['DESTINATARIO APELLIDOS'] || row['Destinatario Apellidos'] || '';
+                    const idEntrada = row['ID de entrada'] || row['ID DE ENTRADA'] || row['ID entrada'] || row['ID'] || 'N/A';
+                    const fileUrl = row['carta'] || row['CARTA'] || row['URL'] || '';
+
+                    const remitente = `${remNombre} ${remApellido}`.trim();
+                    const destinatario = `${destNombre} ${destApellido}`.trim();
+
+                    logStatus(`[${i + 1}/${parsedData.length}] ID: ${idEntrada} | Procesando carta de: ${remitente} -> ${destinatario}`);
+
+                    if (!fileUrl) {
+                        logStatus(`  ⚠️ Registro omitido (URL no encontrada).`);
+                        continue;
+                    }
+
+                    const targetUrl = proxy ? proxy + encodeURIComponent(fileUrl) : fileUrl;
+
+                    try {
+                        const response = await fetch(targetUrl);
+                        if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+                        const blob = await response.blob();
+                        const arrayBuffer = await blob.arrayBuffer();
+
+                        const urlLower = fileUrl.toLowerCase();
+
+                        if (urlLower.endsWith('.pdf')) {
+                            const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                            const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                            
+                            copiedPages.forEach(page => {
+                                stampHeader(page, remitente, destinatario, idEntrada, labelPos);
+                                mergedPdf.addPage(page);
+                            });
+
+                        } else if (urlLower.endsWith('.docx')) {
+                            // Procesar DOCX con Mammoth + html2canvas
+                            const hiddenArea = document.getElementById('hiddenRenderArea');
+                            const htmlResult = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                            hiddenArea.innerHTML = htmlResult.value;
+
+                            const canvas = await html2canvas(hiddenArea, { scale: 2 });
+                            const imgDataUrl = canvas.toDataURL('image/png');
+                            const imgEmbed = await mergedPdf.embedPng(imgDataUrl);
+
+                            const page = mergedPdf.addPage([canvas.width / 2, canvas.height / 2]);
+                            page.drawImage(imgEmbed, { x: 0, y: 0, width: canvas.width / 2, height: canvas.height / 2 });
+                            stampHeader(page, remitente, destinatario, idEntrada, labelPos);
+
+                        } else if (urlLower.endsWith('.png') || urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg')) {
+                            let imgEmbed;
+                            if (urlLower.endsWith('.png')) {
+                                imgEmbed = await mergedPdf.embedPng(arrayBuffer);
+                            } else {
+                                imgEmbed = await mergedPdf.embedJpg(arrayBuffer);
+                            }
+
+                            const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
+                            page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
+                            stampHeader(page, remitente, destinatario, idEntrada, labelPos);
+                        } else {
+                            logStatus(`  ⚠️ Formato de archivo no soportado: ${fileUrl}`);
+                        }
+
+                    } catch (err) {
+                        logStatus(`  ❌ Error al descargar/procesar archivo: ${err.message}`);
+                    }
+                }
+
+                logStatus('Generando archivo PDF consolidado...');
+                const pdfBytes = await mergedPdf.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const pdfUrl = URL.createObjectURL(blob);
+
+                downloadBtn.href = pdfUrl;
+                downloadBtn.download = `Cartas_Consolidadas_${new Date().toISOString().slice(0,10)}.pdf`;
+                
+                statusTitle.innerText = "Proceso Completado";
+                downloadCard.classList.remove('hidden');
+
+            } catch (err) {
+                logStatus(`❌ Error general en el proceso: ${err.message}`);
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+
+        // Función para estampar Remitente, Destinatario e ID de Entrada
+        function stampHeader(page, remitente, destinatario, idEntrada, position) {
+            const { width, height } = page.getSize();
+            const fontSize = 9;
+            const lineHeight = 12;
+
+            const textRem = `Remitente: ${remitente}`;
+            const textDest = `Destinatario: ${destinatario}`;
+            const textID = `ID Entrada: ${idEntrada}`;
+
+            let x = 20;
+            let y = height - 25;
+
+            if (position.includes('right')) {
+                x = width - 230;
+            }
+            if (position.includes('bottom')) {
+                y = 45;
+            }
+
+            // Fondo blanco semi-transparente para asegurar legibilidad
+            page.drawRectangle({
+                x: x - 5,
+                y: y - (lineHeight * 2) - 4,
+                width: 225,
+                height: (lineHeight * 3) + 6,
+                color: PDFLib.rgb(1, 1, 1),
+                opacity: 0.9,
+                borderColor: PDFLib.rgb(0.8, 0.8, 0.8),
+                borderWidth: 0.5,
+            });
+
+            // Dibujar las líneas de texto
+            page.drawText(textID, {
+                x: x,
+                y: y,
+                size: fontSize,
+                color: PDFLib.rgb(0.2, 0.2, 0.2)
+            });
+
+            page.drawText(textRem, {
+                x: x,
+                y: y - lineHeight,
+                size: fontSize,
+                color: PDFLib.rgb(0.1, 0.1, 0.1)
+            });
+
+            page.drawText(textDest, {
+                x: x,
+                y: y - (lineHeight * 2),
+                size: fontSize,
+                color: PDFLib.rgb(0.1, 0.1, 0.1)
+            });
+        }
+
+        function logStatus(msg) {
+            statusText.innerText += msg + '\n';
+            statusText.scrollTop = statusText.scrollHeight;
+        }
+    </script>
+</body>
+</html>
