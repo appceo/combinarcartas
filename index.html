@@ -3,868 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador y Combinador de Cartas PDF</title>
+    <title>Consolidador de Cartas - Cita con Dios</title>
+    <!-- Tailwind CSS para diseño -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- External Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- SheetJS para leer Excel (.xlsx, .xls) y CSV -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- pdf-lib para manipular y unir PDFs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <!-- Mammoth para extraer texto de Word (.docx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- html2canvas para renderizar Word e Imágenes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
 
-    <header class="bg-indigo-700 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <i class="fa-solid font-bold fa-file-pdf text-3xl text-indigo-200"></i>
-                <div>
-                    <h1 class="text-xl font-bold leading-tight">Procesador y Combinador de Documentos PDF</h1>
-                    <p class="text-xs text-indigo-200">CSV/URLs a PDF Unificado con Estampado de Encabezados</p>
-                </div>
-            </div>
-            <div class="hidden sm:flex items-center space-x-2 text-xs bg-indigo-800 px-3 py-1.5 rounded-lg border border-indigo-600">
-                <i class="fa-solid font-semibold fa-shield-halved text-emerald-400"></i>
-                <span>Procesamiento 100% en Navegador</span>
-            </div>
+    <div class="max-w-4xl mx-auto py-10 px-4">
+        <!-- Encabezado -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
+            <h1 class="text-2xl font-bold text-indigo-700 mb-2">Unificador de Cartas a PDF (GitHub Version)</h1>
+            <p class="text-slate-600 text-sm">
+                Sube tu archivo de <strong>Excel (.xlsx, .xls)</strong> o <strong>CSV</strong>. La aplicación descargará las cartas (PDF, DOCX, JPG, PNG), estampará el 
+                <strong>ID de entrada</strong>, <strong>Remitente</strong> y <strong>Destinatario</strong> en cada página y unirá todo en un único PDF listo para imprimir.
+            </p>
         </div>
-    </header>
 
-    <!-- MAIN CONTAINER -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Panel de Carga -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Cargar archivo Excel o CSV:</label>
+                <input type="file" id="dataFile" accept=".csv, .xlsx, .xls" class="block w-full text-sm text-slate-500
+                    file:mr-4 file:py-2.5 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-indigo-50 file:text-indigo-700
+                    hover:file:bg-indigo-100 cursor-pointer border border-slate-300 rounded-lg"/>
+            </div>
 
-        <section class="lg:col-span-5 space-y-6">
-            
-            <!-- Step 1: Upload CSV or Manual Input -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition duration-150">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2">
-                        <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">1</span>
-                        Cargar Archivo CSV o Datos
-                    </h2>
-                    <button id="downloadSampleBtn" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
-                        <i class="fa-solid fa-download"></i> Ejemplo CSV
-                    </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Posición del Sello:</label>
+                    <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                        <option value="top-right">Esquina Superior Derecha</option>
+                        <option value="top-left">Esquina Superior Izquierda</option>
+                        <option value="bottom-right">Esquina Inferior Derecha</option>
+                        <option value="bottom-left">Esquina Inferior Izquierda</option>
+                    </select>
                 </div>
-
-                <!-- CSV Upload Box -->
-                <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-lg p-5 text-center cursor-pointer transition bg-slate-50 hover:bg-indigo-50/30">
-                    <input type="file" id="csvFileInput" accept=".csv, .txt" class="hidden">
-                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
-                    <p class="text-sm font-medium text-slate-700">Arrastra tu archivo CSV aquí o <span class="text-indigo-600 underline">examina</span></p>
-                    <p class="text-xs text-slate-400 mt-1">Columnas requeridas: Remitente, Destinatario, ID, URL/Documento</p>
-                </div>
-
-                <!-- Mapping fields dropdowns (hidden until CSV loaded) -->
-                <div id="mappingSection" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-3">
-                    <p class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Mapeo de Columnas Detectadas</p>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                            <label class="block text-slate-500 mb-1">Remitente (Sender):</label>
-                            <select id="mapSender" class="w-full border border-slate-300 rounded p-1.5 text-slate-700 bg-white"></select>
-                        </div>
-                        <div>
-                            <label class="block text-slate-500 mb-1">Destinatario (Recipient):</label>
-                            <select id="mapRecipient" class="w-full border border-slate-300 rounded p-1.5 text-slate-700 bg-white"></select>
-                        </div>
-                        <div>
-                            <label class="block text-slate-500 mb-1">ID Entrada (Entry ID):</label>
-                            <select id="mapEntryId" class="w-full border border-slate-300 rounded p-1.5 text-slate-700 bg-white"></select>
-                        </div>
-                        <div>
-                            <label class="block text-slate-500 mb-1">URL Documento:</label>
-                            <select id="mapDocUrl" class="w-full border border-slate-300 rounded p-1.5 text-slate-700 bg-white"></select>
-                        </div>
-                    </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Proxy para descargas (Bypass CORS):</label>
+                    <select id="corsProxy" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                        <option value="https://api.allorigins.win/raw?url=">AllOrigins (Recomendado)</option>
+                        <option value="https://corsproxy.io/?">CorsProxy.io</option>
+                        <option value="">Directo (Sin Proxy)</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <h2 class="text-base font-semibold text-slate-800 flex items-center gap-2 mb-4">
-                    <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">2</span>
-                    Configuración del Estampado
-                </h2>
+            <button id="processBtn" disabled class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold rounded-lg shadow transition duration-200">
+                Procesar y Generar PDF Consolidado
+            </button>
+        </div>
 
-                <div class="space-y-4 text-xs">
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Posición del Encabezado:</label>
-                        <select id="stampPosition" class="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-800">
-                            <option value="top-right" selected>Esquina Superior Derecha</option>
-                            <option value="top-left">Esquina Superior Izquierda</option>
-                            <option value="bottom-right">Esquina Inferior Derecha</option>
-                            <option value="bottom-left">Esquina Inferior Izquierda</option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Color de Texto:</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="color" id="stampTextColor" value="#1e293b" class="h-8 w-10 border border-slate-300 rounded cursor-pointer p-0.5">
-                                <span id="stampTextColorVal" class="text-slate-500">#1e293b</span>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Color de Fondo:</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="color" id="stampBgColor" value="#f8fafc" class="h-8 w-10 border border-slate-300 rounded cursor-pointer p-0.5">
-                                <span id="stampBgColorVal" class="text-slate-500">#f8fafc</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Tamaño Fuente (pt):</label>
-                            <input type="number" id="stampFontSize" value="9" min="6" max="20" class="w-full border border-slate-300 rounded-lg p-2">
-                        </div>
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Opacidad Fondo (%):</label>
-                            <input type="number" id="stampBgOpacity" value="90" min="0" max="100" class="w-full border border-slate-300 rounded-lg p-2">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Proxy CORS (para descargas externas):</label>
-                        <select id="corsProxySelect" class="w-full border border-slate-300 rounded-lg p-2 bg-white text-slate-800">
-                            <option value="https://corsproxy.io/?" selected>corsproxy.io (Recomendado)</option>
-                            <option value="https://api.allorigins.win/raw?url=">allorigins.win</option>
-                            <option value="direct">Sin Proxy (Acceso Directo)</option>
-                        </select>
-                    </div>
-                </div>
+        <!-- Barra de Progreso -->
+        <div id="statusCard" class="hidden bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
+            <h2 class="text-lg font-semibold text-slate-700 mb-3" id="statusTitle">Procesando...</h2>
+            <div class="w-full bg-slate-200 rounded-full h-3 mb-4 overflow-hidden">
+                <div id="progressBar" class="bg-indigo-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
+            <p id="statusText" class="text-xs font-mono bg-slate-900 text-green-400 p-4 rounded-lg max-h-48 overflow-y-auto leading-relaxed"></p>
+        </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
-                <button id="processBtn" disabled class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-bolt"></i>
-                    <span>Procesar y Generar PDF Combinado</span>
-                </button>
-                <button id="resetBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-xl transition text-xs flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-rotate-left"></i>
-                    <span>Reiniciar Proceso</span>
-                </button>
-            </div>
-        </section>
+        <!-- Descarga -->
+        <div id="downloadCard" class="hidden bg-emerald-50 rounded-xl shadow-md p-6 border border-emerald-200 text-center">
+            <h2 class="text-xl font-bold text-emerald-800 mb-2">¡Documento Final Generado!</h2>
+            <p class="text-emerald-700 text-sm mb-4">Se completó la unión de todos los registros válidos.</p>
+            <a id="downloadBtn" class="inline-flex items-center gap-2 py-3 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-lg transition duration-200 cursor-pointer">
+                Descargar PDF Consolidado
+            </a>
+        </div>
+    </div>
 
-        <section class="lg:col-span-7 space-y-6 flex flex-col">
-
-            <!-- Data Table Preview -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col h-72">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-table text-indigo-500"></i>
-                        Vista Previa de Registros (<span id="recordCount">0</span>)
-                    </h3>
-                    <span id="dataStatusBadge" class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">Esperando CSV</span>
-                </div>
-
-                <div class="flex-1 overflow-auto border border-slate-100 rounded-lg custom-scrollbar">
-                    <table id="dataTable" class="w-full text-xs text-left text-slate-600">
-                        <thead class="text-xs text-slate-700 bg-slate-100 sticky top-0 font-semibold">
-                            <tr>
-                                <th class="p-2.5">#</th>
-                                <th class="p-2.5">Remitente</th>
-                                <th class="p-2.5">Destinatario</th>
-                                <th class="p-2.5">ID Entrada</th>
-                                <th class="p-2.5">Documento (URL)</th>
-                                <th class="p-2.5 text-center">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dataTableBody" class="divide-y divide-slate-100">
-                            <tr>
-                                <td colspan="6" class="p-8 text-center text-slate-400 italic">No hay datos cargados aún. Por favor sube un archivo CSV.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex-1 flex flex-col min-h-[300px]">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-terminal text-slate-600"></i>
-                        Consola de Procesamiento
-                    </h3>
-                    <div id="progressIndicator" class="hidden flex items-center gap-2 text-xs font-medium text-indigo-600">
-                        <i class="fa-solid fa-circle-notch fa-spin"></i>
-                        <span id="progressPercent">0%</span>
-                    </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="w-full bg-slate-100 rounded-full h-2 mb-3 overflow-hidden">
-                    <div id="progressBar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                </div>
-
-                <!-- Terminal Output Container -->
-                <div id="consoleLog" class="flex-1 bg-slate-900 text-slate-200 font-mono text-xs p-3 rounded-lg overflow-y-auto custom-scrollbar space-y-1.5 h-48">
-                    <div class="text-slate-500">[Info] Sistema listo. Sube un archivo CSV para iniciar.</div>
-                </div>
-
-                <!-- Result Actions (Visible on Completion) -->
-                <div id="resultContainer" class="hidden mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
-                    <button id="downloadPdfBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow transition text-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-file-arrow-down"></i>
-                        <span>Descargar PDF Final</span>
-                    </button>
-                    <button id="previewPdfBtn" class="bg-slate-700 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-eye"></i>
-                        <span>Abrir Vista Previa</span>
-                    </button>
-                </div>
-            </div>
-
-        </section>
-    </main>
-
-    <!-- Hidden Offscreen Render Canvas Container for Word DOCX & Image Layout -->
-    <div id="hiddenRenderArea" style="position: absolute; left: -9999px; top: -9999px; width: 794px;"></div>
+    <!-- Contenedor oculto para renderizado de plantillas Word -->
+    <div id="hiddenWordRender" style="position: absolute; left: -9999px; top: -9999px; width: 750px; background: white; padding: 30px; font-family: sans-serif;"></div>
 
     <script>
-        // State Management variables
-        let csvParsedData = [];
-        let generatedPdfBytes = null;
-        let generatedPdfBlobUrl = null;
-
-        // DOM Element Cache
-        const csvFileInput = document.getElementById('csvFileInput');
-        const dropZone = document.getElementById('dropZone');
-        const mappingSection = document.getElementById('mappingSection');
-        const downloadSampleBtn = document.getElementById('downloadSampleBtn');
-        
-        const mapSender = document.getElementById('mapSender');
-        const mapRecipient = document.getElementById('mapRecipient');
-        const mapEntryId = document.getElementById('mapEntryId');
-        const mapDocUrl = document.getElementById('mapDocUrl');
-
+        const dataFileInput = document.getElementById('dataFile');
         const processBtn = document.getElementById('processBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const dataTableBody = document.getElementById('dataTableBody');
-        const recordCount = document.getElementById('recordCount');
-        const dataStatusBadge = document.getElementById('dataStatusBadge');
-        const consoleLog = document.getElementById('consoleLog');
-        
+        const statusCard = document.getElementById('statusCard');
         const progressBar = document.getElementById('progressBar');
-        const progressIndicator = document.getElementById('progressIndicator');
-        const progressPercent = document.getElementById('progressPercent');
+        const statusText = document.getElementById('statusText');
+        const statusTitle = document.getElementById('statusTitle');
+        const downloadCard = document.getElementById('downloadCard');
+        const downloadBtn = document.getElementById('downloadBtn');
 
-        const resultContainer = document.getElementById('resultContainer');
-        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
-        const previewPdfBtn = document.getElementById('previewPdfBtn');
+        let rowsData = [];
 
-        const stampTextColor = document.getElementById('stampTextColor');
-        const stampBgColor = document.getElementById('stampBgColor');
-        const stampTextColorVal = document.getElementById('stampTextColorVal');
-        const stampBgColorVal = document.getElementById('stampBgColorVal');
+        // Lector unificado de Excel y CSV mediante SheetJS
+        dataFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-        // Update Color Text Displays
-        stampTextColor.addEventListener('input', (e) => stampTextColorVal.textContent = e.target.value);
-        stampBgColor.addEventListener('input', (e) => stampBgColorVal.textContent = e.target.value);
-
-        // Helper: Log message to output console
-        function log(message, type = 'info') {
-            const time = new Date().toLocaleTimeString();
-            let colorClass = 'text-slate-300';
-            let icon = 'fa-chevron-right';
-
-            if (type === 'success') {
-                colorClass = 'text-emerald-400';
-                icon = 'fa-check';
-            } else if (type === 'warn') {
-                colorClass = 'text-amber-400';
-                icon = 'fa-triangle-exclamation';
-            } else if (type === 'error') {
-                colorClass = 'text-rose-400';
-                icon = 'fa-xmark';
-            }
-
-            const logLine = document.createElement('div');
-            logLine.className = `${colorClass} flex items-start gap-2`;
-            logLine.innerHTML = `<span class="text-slate-500 select-none">[${time}]</span> <i class="fa-solid ${icon} text-[10px] mt-1"></i> <span>${message}</span>`;
-            consoleLog.appendChild(logLine);
-            consoleLog.scrollTop = consoleLog.scrollHeight;
-        }
-
-        dropZone.addEventListener('click', () => csvFileInput.click());
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-indigo-500', 'bg-indigo-50/50');
-        });
-
-        ['dragleave', 'dragend'].forEach(evt => {
-            dropZone.addEventListener(evt, () => {
-                dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/50');
-            });
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/50');
-            if (e.dataTransfer.files.length) {
-                csvFileInput.files = e.dataTransfer.files;
-                handleCSVFile(e.dataTransfer.files[0]);
-            }
-        });
-
-        csvFileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                handleCSVFile(e.target.files[0]);
-            }
-        });
-
-        function handleCSVFile(file) {
-            log(`Leyendo archivo CSV: ${file.name}...`);
-            
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    if (results.errors && results.errors.length > 0) {
-                        log(`Advertencias al parsear CSV: ${results.errors[0].message}`, 'warn');
-                    }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheet];
                     
-                    csvParsedData = results.data;
-                    const fields = results.meta.fields || [];
+                    rowsData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-                    if (csvParsedData.length === 0) {
-                        log('El archivo CSV está vacío o no contiene filas de datos.', 'error');
-                        return;
+                    if (rowsData.length > 0) {
+                        processBtn.disabled = false;
+                        alert(`¡Éxito! Se cargaron ${rowsData.length} filas desde el archivo.`);
+                    } else {
+                        alert("El archivo está vacío o no se pudieron leer las filas.");
                     }
-
-                    log(`CSV cargado con éxito. Se encontraron ${csvParsedData.length} registros y ${fields.length} columnas.`, 'success');
-                    populateColumnMappings(fields);
-                    renderDataTable();
-                    
-                    processBtn.disabled = false;
-                    dataStatusBadge.textContent = "Datos Listos";
-                    dataStatusBadge.className = "text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-medium";
-                },
-                error: function(err) {
-                    log(`Error grave al leer CSV: ${err}`, 'error');
+                } catch (err) {
+                    alert("Error al leer el archivo: " + err.message);
                 }
-            });
-        }
-
-        // Auto-detect and populate dropdowns for mapping
-        function populateColumnMappings(fields) {
-            mappingSection.classList.remove('hidden');
-            
-            const selects = [mapSender, mapRecipient, mapEntryId, mapDocUrl];
-            selects.forEach(select => {
-                select.innerHTML = '';
-                fields.forEach(field => {
-                    const opt = document.createElement('option');
-                    opt.value = field;
-                    opt.textContent = field;
-                    select.appendChild(opt);
-                });
-            });
-
-            // Smart Auto-selection heuristics
-            fields.forEach(f => {
-                const lower = f.toLowerCase();
-                if (lower.includes('remitente') || lower.includes('sender') || lower.includes('de') || lower.includes('from')) {
-                    mapSender.value = f;
-                }
-                if (lower.includes('destinatario') || lower.includes('recipient') || lower.includes('para') || lower.includes('to')) {
-                    mapRecipient.value = f;
-                }
-                if (lower.includes('id') || lower.includes('entrada') || lower.includes('entry') || lower.includes('codigo')) {
-                    mapEntryId.value = f;
-                }
-                if (lower.includes('url') || lower.includes('doc') || lower.includes('documento') || lower.includes('link') || lower.includes('archivo')) {
-                    mapDocUrl.value = f;
-                }
-            });
-
-            // Add event listeners to re-render table when mapping changes
-            selects.forEach(s => s.addEventListener('change', renderDataTable));
-        }
-
-        // Render Data Table Preview
-        function renderDataTable() {
-            if (!csvParsedData.length) return;
-
-            const senderKey = mapSender.value;
-            const recipientKey = mapRecipient.value;
-            const entryIdKey = mapEntryId.value;
-            const docUrlKey = mapDocUrl.value;
-
-            recordCount.textContent = csvParsedData.length;
-            dataTableBody.innerHTML = '';
-
-            csvParsedData.forEach((row, index) => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition';
-                
-                const sender = row[senderKey] || 'N/A';
-                const recipient = row[recipientKey] || 'N/A';
-                const entryId = row[entryIdKey] || 'N/A';
-                const docUrl = row[docUrlKey] || '';
-
-                tr.innerHTML = `
-                    <td class="p-2.5 font-medium text-slate-400">${index + 1}</td>
-                    <td class="p-2.5 font-semibold text-slate-700">${escapeHtml(sender)}</td>
-                    <td class="p-2.5 text-slate-600">${escapeHtml(recipient)}</td>
-                    <td class="p-2.5 font-mono text-slate-500">${escapeHtml(entryId)}</td>
-                    <td class="p-2.5 max-w-[150px] truncate text-indigo-600" title="${escapeHtml(docUrl)}">${escapeHtml(docUrl)}</td>
-                    <td class="p-2.5 text-center" id="status-cell-${index}">
-                        <span class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-500">Pendiente</span>
-                    </td>
-                `;
-                dataTableBody.appendChild(tr);
-            });
-        }
-
-        function escapeHtml(str) {
-            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-
-        downloadSampleBtn.addEventListener('click', () => {
-            const csvContent = "data:text/csv;charset=utf-8," 
-                + "Remitente,Destinatario,ID_Entrada,URL_Documento\n"
-                + "Juan Perez,Maria Gomez,ENT-1001,https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf\n"
-                + "Empresa ACME,Carlos Ruiz,ENT-1002,https://picsum.photos/800/1000\n"
-                + "Servicios Globales,Ana Torres,ENT-1003,https://picsum.photos/900/1200";
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "ejemplo_cartas_documentos.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            };
+            reader.readAsArrayBuffer(file);
         });
 
         processBtn.addEventListener('click', async () => {
-            if (!csvParsedData.length) return;
+            if (rowsData.length === 0) return;
 
-            // UI Reset for process start
             processBtn.disabled = true;
-            resultContainer.classList.add('hidden');
-            progressIndicator.classList.remove('hidden');
+            statusCard.classList.remove('hidden');
+            downloadCard.classList.add('hidden');
             progressBar.style.width = '0%';
-            progressPercent.textContent = '0%';
-            consoleLog.innerHTML = '';
+            statusText.innerText = 'Iniciando pipeline en el navegador...\n';
 
-            log('Iniciando procesamiento por lotes...', 'info');
+            try {
+                const mergedPdf = await PDFLib.PDFDocument.create();
+                const selectedProxy = document.getElementById('corsProxy').value;
+                const position = document.getElementById('labelPosition').value;
 
-            const { PDFDocument, rgb, StandardFonts } = PDFLib;
-            const mergedPdfDoc = await PDFDocument.create();
+                for (let i = 0; i < rowsData.length; i++) {
+                    const row = rowsData[i];
+                    const progress = Math.round(((i + 1) / rowsData.length) * 100);
+                    progressBar.style.width = `${progress}%`;
 
-            const total = csvParsedData.length;
-            const proxyPrefix = document.getElementById('corsProxySelect').value;
+                    // Búsqueda flexible de nombres de columnas
+                    const remNom = getVal(row, ['REMITENTE Nombre', 'REMITENTE NOMBRE', 'Remitente Nombre', 'REMITENTE_NOMBRE']);
+                    const remApe = getVal(row, ['REMITENTE Apellidos', 'REMITENTE APELLIDOS', 'Remitente Apellidos', 'REMITENTE_APELLIDOS']);
+                    const destNom = getVal(row, ['DESTINATARIO Nombre', 'DESTINATARIO NOMBRE', 'Destinatario Nombre', 'DESTINATARIO_NOMBRE']);
+                    const destApe = getVal(row, ['DESTINATARIO Apellidos', 'DESTINATARIO APELLIDOS', 'Destinatario Apellidos', 'DESTINATARIO_APELLIDOS']);
+                    const idEntrada = getVal(row, ['ID de entrada', 'ID DE ENTRADA', 'ID entrada', 'ID', 'ID_ENTRADA']) || 'N/A';
+                    const fileUrl = getVal(row, ['carta', 'CARTA', 'Carta', 'URL', 'url']);
 
-            const senderKey = mapSender.value;
-            const recipientKey = mapRecipient.value;
-            const entryIdKey = mapEntryId.value;
-            const docUrlKey = mapDocUrl.value;
+                    const remitente = `${remNom} ${remApe}`.trim() || 'No especificado';
+                    const destinatario = `${destNom} ${destApe}`.trim() || 'No especificado';
 
-            // Options for Header Stamp
-            const stampPos = document.getElementById('stampPosition').value;
-            const fontSize = parseInt(document.getElementById('stampFontSize').value) || 9;
-            const textHex = stampTextColor.value;
-            const bgHex = stampBgColor.value;
-            const bgOpacity = (parseInt(document.getElementById('stampBgOpacity').value) || 90) / 100;
+                    logStatus(`\n[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
 
-            const textColorRgb = hexToRgb(textHex, rgb);
-            const bgColorRgb = hexToRgb(bgHex, rgb);
-
-            let successCount = 0;
-            let failCount = 0;
-
-            for (let i = 0; i < total; i++) {
-                const row = csvParsedData[i];
-                const sender = row[senderKey] || '';
-                const recipient = row[recipientKey] || '';
-                const entryId = row[entryIdKey] || '';
-                const originalUrl = row[docUrlKey] || '';
-
-                const statusCell = document.getElementById(`status-cell-${i}`);
-                if (statusCell) {
-                    statusCell.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-700 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Procesando</span>`;
-                }
-
-                log(`[${i+1}/${total}] Procesando Entrada ID "${entryId}"...`);
-
-                try {
-                    if (!originalUrl) {
-                        throw new Error('La URL del documento está vacía.');
+                    if (!fileUrl) {
+                        logStatus(`  ⚠️ Omitido: Registro sin enlace URL.`);
+                        continue;
                     }
 
-                    // Construct fetch URL (Direct or via Proxy)
-                    let fetchUrl = originalUrl;
-                    if (proxyPrefix !== 'direct') {
-                        fetchUrl = proxyPrefix + encodeURIComponent(originalUrl);
+                    // Descargar el archivo pasando por el proxy si está configurado
+                    const buffer = await fetchWithProxy(fileUrl, selectedProxy);
+                    
+                    if (!buffer) {
+                        logStatus(`  ❌ Error al descargar el documento.`);
+                        continue;
                     }
 
-                    log(`  -> Descargando documento desde: ${originalUrl}`);
-                    const response = await fetch(fetchUrl);
-                    if (!response.ok) {
-                        throw new Error(`Fallo de descarga HTTP (${response.status} ${response.statusText})`);
-                    }
+                    const urlLower = fileUrl.toLowerCase();
 
-                    const arrayBuffer = await response.arrayBuffer();
-                    const contentType = response.headers.get('content-type') || '';
-                    const fileExt = getFileExtension(originalUrl, contentType);
+                    // 1. FORMATO PDF
+                    if (urlLower.includes('.pdf')) {
+                        const loadedPdf = await PDFLib.PDFDocument.load(buffer);
+                        const pages = await mergedPdf.copyPages(loadedPdf, loadedPdf.getPageIndices());
+                        pages.forEach(p => {
+                            stampHeader(p, remitente, destinatario, idEntrada, position);
+                            mergedPdf.addPage(p);
+                        });
+                        logStatus(`  ✅ PDF procesado correctamente.`);
 
-                    log(`  -> Tipo detectado: [${fileExt.toUpperCase()}]. Convirtiendo a PDF...`);
+                    // 2. FORMATO WORD (.DOCX)
+                    } else if (urlLower.includes('.docx')) {
+                        const hiddenRender = document.getElementById('hiddenWordRender');
+                        const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+                        hiddenRender.innerHTML = result.value;
 
-                    let tempPdfBytes = null;
+                        const canvas = await html2canvas(hiddenRender, { scale: 1.5 });
+                        const imgDataUrl = canvas.toDataURL('image/png');
+                        const imgEmbed = await mergedPdf.embedPng(imgDataUrl);
 
-                    // Handler per file type
-                    if (fileExt === 'pdf') {
-                        tempPdfBytes = arrayBuffer;
-                    } else if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
-                        tempPdfBytes = await convertImageToPdf(arrayBuffer, fileExt);
-                    } else if (['webp', 'gif'].includes(fileExt)) {
-                        tempPdfBytes = await convertCanvasImageToPdf(arrayBuffer);
-                    } else if (fileExt === 'docx') {
-                        tempPdfBytes = await convertDocxToPdf(arrayBuffer);
+                        const page = mergedPdf.addPage([canvas.width, canvas.height]);
+                        page.drawImage(imgEmbed, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+                        stampHeader(page, remitente, destinatario, idEntrada, position);
+                        logStatus(`  ✅ Documento Word procesado.`);
+
+                    // 3. FORMATOS DE IMAGEN (JPG, PNG, JPEG)
+                    } else if (urlLower.match(/\.(jpg|jpeg|png)$/i)) {
+                        let imgEmbed;
+                        if (urlLower.includes('.png')) {
+                            imgEmbed = await mergedPdf.embedPng(buffer);
+                        } else {
+                            imgEmbed = await mergedPdf.embedJpg(buffer);
+                        }
+
+                        const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
+                        page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
+                        stampHeader(page, remitente, destinatario, idEntrada, position);
+                        logStatus(`  ✅ Imagen cargada y procesada.`);
+
                     } else {
-                        // Fallback attempt as Image or PDF
-                        try {
-                            tempPdfBytes = await convertCanvasImageToPdf(arrayBuffer);
-                        } catch (e) {
-                            tempPdfBytes = arrayBuffer; // try as raw PDF
-                        }
-                    }
-
-                    // Load PDF to overlay stamps
-                    const docToStamp = await PDFDocument.load(tempPdfBytes);
-                    const font = await docToStamp.embedFont(StandardFonts.HelveticaBold);
-                    const fontRegular = await docToStamp.embedFont(StandardFonts.Helvetica);
-                    const pages = docToStamp.getPages();
-
-                    log(`  -> Estampando encabezado personalizado en ${pages.length} página(s)...`);
-
-                    pages.forEach((page) => {
-                        const { width, height } = page.getSize();
-
-                        // Header lines text
-                        const line1 = `REMITENTE: ${sender}`;
-                        const line2 = `DESTINATARIO: ${recipient}`;
-                        const line3 = `ID ENTRADA: ${entryId}`;
-
-                        const padding = 8;
-                        const lineHeight = fontSize + 3;
-                        const boxWidth = Math.max(
-                            fontBoldWidth(line1, fontSize),
-                            fontBoldWidth(line2, fontSize),
-                            fontBoldWidth(line3, fontSize)
-                        ) + (padding * 2);
-
-                        const boxHeight = (lineHeight * 3) + (padding * 1.5);
-
-                        // Position calculation
-                        let x = padding;
-                        let y = height - boxHeight - padding;
-
-                        if (stampPos === 'top-right') {
-                            x = width - boxWidth - padding;
-                            y = height - boxHeight - padding;
-                        } else if (stampPos === 'top-left') {
-                            x = padding;
-                            y = height - boxHeight - padding;
-                        } else if (stampPos === 'bottom-right') {
-                            x = width - boxWidth - padding;
-                            y = padding;
-                        } else if (stampPos === 'bottom-left') {
-                            x = padding;
-                            y = padding;
-                        }
-
-                        // Draw background box
-                        page.drawRectangle({
-                            x: x,
-                            y: y,
-                            width: boxWidth,
-                            height: boxHeight,
-                            color: bgColorRgb,
-                            opacity: bgOpacity,
-                            borderColor: textColorRgb,
-                            borderWidth: 0.5,
-                        });
-
-                        // Draw lines of text
-                        const textY1 = y + boxHeight - padding - fontSize;
-                        const textY2 = textY1 - lineHeight;
-                        const textY3 = textY2 - lineHeight;
-
-                        page.drawText(line1, { x: x + padding, y: textY1, size: fontSize, font: font, color: textColorRgb });
-                        page.drawText(line2, { x: x + padding, y: textY2, size: fontSize, font: fontRegular, color: textColorRgb });
-                        page.drawText(line3, { x: x + padding, y: textY3, size: fontSize, font: font, color: textColorRgb });
-                    });
-
-                    // Copy stamped pages into main combined document
-                    const copiedPages = await mergedPdfDoc.copyPages(docToStamp, docToStamp.getPageIndices());
-                    copiedPages.forEach((p) => mergedPdfDoc.addPage(p));
-
-                    log(`  -> Documento ID ${entryId} procesado con éxito.`, 'success');
-                    successCount++;
-
-                    if (statusCell) {
-                        statusCell.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-700 font-medium">Completado</span>`;
-                    }
-
-                } catch (err) {
-                    failCount++;
-                    log(`  -> ERROR procesando entrada ID "${entryId}": ${err.message}`, 'error');
-                    if (statusCell) {
-                        statusCell.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] bg-rose-100 text-rose-700 font-medium" title="${escapeHtml(err.message)}">Error</span>`;
+                        logStatus(`  ⚠️ Formato desconocido/no soportado.`);
                     }
                 }
 
-                // Update Progress UI
-                const currentPercent = Math.round(((i + 1) / total) * 100);
-                progressBar.style.width = `${currentPercent}%`;
-                progressPercent.textContent = `${currentPercent}%`;
-            }
-
-            if (successCount > 0) {
-                log(`Generando archivo PDF final unificado...`, 'info');
-                generatedPdfBytes = await mergedPdfDoc.save();
+                logStatus('\nCompilando archivo PDF final...');
+                const pdfBytes = await mergedPdf.save();
                 
-                const blob = new Blob([generatedPdfBytes], { type: 'application/pdf' });
-                if (generatedPdfBlobUrl) URL.revokeObjectURL(generatedPdfBlobUrl);
-                generatedPdfBlobUrl = URL.createObjectURL(blob);
+                if (pdfBytes.length < 500) {
+                    throw new Error("El archivo PDF generado está vacío.");
+                }
 
-                log(`¡Proceso completado! ${successCount} documento(s) combinados correctamente. (${failCount} errores)`, 'success');
-                resultContainer.classList.remove('hidden');
-            } else {
-                log(`El proceso finalizó sin documentos combinados. Revisa las URL o configuración de Proxy CORS.`, 'error');
-            }
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const finalUrl = URL.createObjectURL(blob);
 
-            progressIndicator.classList.add('hidden');
-            processBtn.disabled = false;
-        });
+                downloadBtn.href = finalUrl;
+                downloadBtn.download = `Cartas_Consolidadas_${Date.now()}.pdf`;
 
-        async function convertImageToPdf(arrayBuffer, format) {
-            const { PDFDocument } = PDFLib;
-            const pdfDoc = await PDFDocument.create();
-            
-            let image;
-            if (format === 'jpg' || format === 'jpeg') {
-                image = await pdfDoc.embedJpg(arrayBuffer);
-            } else if (format === 'png') {
-                image = await pdfDoc.embedPng(arrayBuffer);
-            } else {
-                return convertCanvasImageToPdf(arrayBuffer);
-            }
+                statusTitle.innerText = "¡Proceso Exitoso!";
+                downloadCard.classList.remove('hidden');
 
-            const page = pdfDoc.addPage([image.width, image.height]);
-            page.drawImage(image, {
-                x: 0,
-                y: 0,
-                width: image.width,
-                height: image.height,
-            });
-
-            return await pdfDoc.save();
-        }
-
-        // Convert WEBP, GIF or unsupported image formats via HTML5 Canvas
-        function convertCanvasImageToPdf(arrayBuffer) {
-            return new Promise((resolve, reject) => {
-                const blob = new Blob([arrayBuffer]);
-                const url = URL.createObjectURL(blob);
-                const img = new Image();
-
-                img.onload = async () => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-
-                        const pngDataUrl = canvas.toDataURL('image/png');
-                        const base64Data = pngDataUrl.split(',')[1];
-                        const pngBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-
-                        const { PDFDocument } = PDFLib;
-                        const pdfDoc = await PDFDocument.create();
-                        const embeddedImage = await pdfDoc.embedPng(pngBytes);
-                        
-                        const page = pdfDoc.addPage([embeddedImage.width, embeddedImage.height]);
-                        page.drawImage(embeddedImage, {
-                            x: 0,
-                            y: 0,
-                            width: embeddedImage.width,
-                            height: embeddedImage.height,
-                        });
-
-                        const pdfBytes = await pdfDoc.save();
-                        URL.revokeObjectURL(url);
-                        resolve(pdfBytes);
-                    } catch (e) {
-                        reject(e);
-                    }
-                };
-
-                img.onerror = () => {
-                    URL.revokeObjectURL(url);
-                    reject(new Error("No se pudo renderizar la imagen en Canvas."));
-                };
-
-                img.src = url;
-            });
-        }
-
-        // Convert Microsoft Word DOCX to PDF using Mammoth.js + html2canvas
-        async function convertDocxToPdf(arrayBuffer) {
-            const hiddenArea = document.getElementById('hiddenRenderArea');
-            hiddenArea.innerHTML = '';
-
-            // 1. Convert DOCX to HTML via Mammoth
-            const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
-            const htmlContent = result.value;
-
-            // 2. Render HTML into DOM
-            const container = document.createElement('div');
-            container.style.width = '794px'; // A4 width at 96 DPI
-            container.style.padding = '40px';
-            container.style.background = '#ffffff';
-            container.style.color = '#000000';
-            container.style.fontFamily = 'Arial, sans-serif';
-            container.style.fontSize = '14px';
-            container.style.lineHeight = '1.6';
-            container.innerHTML = htmlContent;
-            
-            hiddenArea.appendChild(container);
-
-            // 3. Capture element with html2canvas
-            const canvas = await html2canvas(container, {
-                scale: 2,
-                useCORS: true,
-                logging: false
-            });
-
-            hiddenArea.innerHTML = '';
-
-            // 4. Place canvas image onto PDF A4 page
-            const imgData = canvas.toDataURL('image/png');
-            const base64Data = imgData.split(',')[1];
-            const pngBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-
-            const { PDFDocument } = PDFLib;
-            const pdfDoc = await PDFDocument.create();
-            const pngImage = await pdfDoc.embedPng(pngBytes);
-
-            // Standard A4 dimensions in points (595.28 x 841.89)
-            const a4Width = 595.28;
-            const a4Height = 841.89;
-
-            const page = pdfDoc.addPage([a4Width, a4Height]);
-            
-            // Aspect ratio fitting
-            const scaledHeight = (pngImage.height * a4Width) / pngImage.width;
-            
-            page.drawImage(pngImage, {
-                x: 0,
-                y: a4Height - scaledHeight,
-                width: a4Width,
-                height: scaledHeight
-            });
-
-            return await pdfDoc.save();
-        }
-
-        function getFileExtension(url, contentType) {
-            const cleanUrl = url.split('?')[0].split('#')[0];
-            const ext = cleanUrl.split('.').pop().toLowerCase();
-
-            if (['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'docx'].includes(ext)) {
-                return ext;
-            }
-
-            if (contentType.includes('pdf')) return 'pdf';
-            if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'jpg';
-            if (contentType.includes('png')) return 'png';
-            if (contentType.includes('webp')) return 'webp';
-            if (contentType.includes('gif')) return 'gif';
-            if (contentType.includes('wordprocessingml') || contentType.includes('docx')) return 'docx';
-
-            return 'pdf'; // Default assumption
-        }
-
-        function fontBoldWidth(text, size) {
-            // Rough estimation for text width in Helvetica bold
-            return text.length * (size * 0.58);
-        }
-
-        function hexToRgb(hex, rgbFunc) {
-            const cleanHex = hex.replace('#', '');
-            const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
-            const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
-            const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
-            return rgbFunc(r, g, b);
-        }
-
-        downloadPdfBtn.addEventListener('click', () => {
-            if (!generatedPdfBytes) return;
-            const blob = new Blob([generatedPdfBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `Documentos_Combinados_${new Date().toISOString().slice(0,10)}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-
-        previewPdfBtn.addEventListener('click', () => {
-            if (generatedPdfBlobUrl) {
-                window.open(generatedPdfBlobUrl, '_blank');
+            } catch (err) {
+                logStatus(`\n❌ Error en el proceso: ${err.message}`);
+            } finally {
+                processBtn.disabled = false;
             }
         });
 
-        // Reset All States
-        resetBtn.addEventListener('click', () => {
-            csvParsedData = [];
-            generatedPdfBytes = null;
-            if (generatedPdfBlobUrl) URL.revokeObjectURL(generatedPdfBlobUrl);
-            generatedPdfBlobUrl = null;
+        // Obtención flexible de campos por varios nombres
+        function getVal(row, keys) {
+            for (let k of keys) {
+                if (row[k] !== undefined && row[k] !== null) return String(row[k]).trim();
+            }
+            return '';
+        }
 
-            csvFileInput.value = '';
-            mappingSection.classList.add('hidden');
-            processBtn.disabled = true;
-            resultContainer.classList.add('hidden');
-            
-            dataTableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">No hay datos cargados aún. Por favor sube un archivo CSV.</td></tr>`;
-            recordCount.textContent = '0';
-            
-            dataStatusBadge.textContent = "Esperando CSV";
-            dataStatusBadge.className = "text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium";
+        // Descarga con reintentos para evitar fallos de CORS
+        async function fetchWithProxy(url, proxy) {
+            const target = proxy ? proxy + encodeURIComponent(url) : url;
+            try {
+                const res = await fetch(target);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.arrayBuffer();
+            } catch (e) {
+                // Si falla con el proxy primario, intenta una descarga alternativa directa
+                try {
+                    const fallback = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
+                    return await fallback.arrayBuffer();
+                } catch (e2) {
+                    return null;
+                }
+            }
+        }
 
-            progressBar.style.width = '0%';
-            progressPercent.textContent = '0%';
-            consoleLog.innerHTML = `<div class="text-slate-500">[Info] Sistema reiniciado. Sube un archivo CSV para comenzar.</div>`;
-        });
+        // Función para estampar la viñeta con el ID, Remitente y Destinatario
+        function stampHeader(page, remitente, destinatario, idEntrada, position) {
+            const { width, height } = page.getSize();
+            const fontSize = 10;
+            const lineHeight = 13;
+
+            let x = 20;
+            let y = height - 20;
+
+            if (position.includes('right')) x = width - 240;
+            if (position.includes('bottom')) y = 60;
+
+            // Cuadro de fondo blanco para legibilidad
+            page.drawRectangle({
+                x: x - 5,
+                y: y - (lineHeight * 2) - 8,
+                width: 235,
+                height: (lineHeight * 3) + 10,
+                color: PDFLib.rgb(1, 1, 1),
+                opacity: 0.95,
+                borderColor: PDFLib.rgb(0.6, 0.6, 0.6),
+                borderWidth: 1,
+            });
+
+            // Textos
+            page.drawText(`ID Entrada: ${idEntrada}`, { x, y, size: fontSize, color: PDFLib.rgb(0, 0, 0) });
+            page.drawText(`Remitente: ${remitente}`, { x, y: y - lineHeight, size: fontSize, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+            page.drawText(`Destinatario: ${destinatario}`, { x, y: y - (lineHeight * 2), size: fontSize, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+        }
+
+        function logStatus(msg) {
+            statusText.innerText += msg + '\n';
+            statusText.scrollTop = statusText.scrollHeight;
+        }
     </script>
 </body>
 </html>
