@@ -73,7 +73,7 @@
         </div>
     </div>
 
-    <!-- Elemento oculto para renderizar archivos Word -->
+    <!-- Elemento oculto para renderizar archivos Word e Imágenes con Fallback -->
     <div id="hiddenWordRender" style="position: absolute; left: -9999px; top: -9999px; width: 750px; background: white; padding: 30px;"></div>
 
     <script>
@@ -161,19 +161,35 @@
                     continue;
                 }
 
-                // BLOQUE AISLADO POR REGISTRO: Si falla, NO detiene los demás registros
                 try {
-                    const buffer = await descargarConFallbacks(fileUrl);
-                    
+                    let buffer = null;
+                    try {
+                        buffer = await descargarConFallbacks(fileUrl);
+                    } catch (dlErr) {
+                        // Fallback especial para imágenes mediante etiqueta <img> si los proxies son bloqueados
+                        logStatus(`  ⚠️ Proxy bloqueado. Intentando decodificación directa por canvas...`);
+                        const canvasDataUrl = await intentarCargaCanvasImagen(fileUrl);
+                        if (canvasDataUrl) {
+                            const imgEmbed = await mergedPdf.embedPng(canvasDataUrl);
+                            const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
+                            page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
+                            stampHeader(page, remitente, destinatario, idEntrada, position);
+                            logStatus(`  ✅ Imagen rescatada e integrada mediante canvas.`);
+                            totalExitosos++;
+                            continue;
+                        } else {
+                            throw dlErr;
+                        }
+                    }
+
                     if (!buffer || buffer.byteLength < 10) {
-                        throw new Error("El archivo descargado está vacío o corrupto.");
+                        throw new Error("El archivo descargado está vacío o no es accesible.");
                     }
 
                     const esPDF = comprobarSiEsPDF(buffer);
                     const urlLower = fileUrl.toLowerCase();
 
                     if (esPDF) {
-                        // Procesar como documento PDF genuino
                         const loadedPdf = await PDFLib.PDFDocument.load(buffer, { ignoreEncryption: true });
                         const pageIndices = loadedPdf.getPageIndices();
                         const copiedPages = await mergedPdf.copyPages(loadedPdf, pageIndices);
@@ -187,7 +203,6 @@
                         totalExitosos++;
 
                     } else if (urlLower.includes('.docx')) {
-                        // Procesar como documento Word
                         const hiddenRender = document.getElementById('hiddenWordRender');
                         const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
                         hiddenRender.innerHTML = result.value;
@@ -204,36 +219,33 @@
                         totalExitosos++;
 
                     } else {
-                        // Intentar procesar como imagen (JPG, PNG, o PDF escaneado guardado como imagen)
-                        try {
-                            const imgDataUrl = await bufferToDataUrl(buffer);
-                            let imgEmbed;
-                            if (imgDataUrl.startsWith('data:image/jpeg')) {
-                                imgEmbed = await mergedPdf.embedJpg(imgDataUrl);
-                            } else {
-                                imgEmbed = await mergedPdf.embedPng(imgDataUrl);
-                            }
-
-                            const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
-                            page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
-                            stampHeader(page, remitente, destinatario, idEntrada, position);
-
-                            logStatus(`  ✅ Imagen convertida e integrada al PDF.`);
-                            totalExitosos++;
-                        } catch (imgErr) {
-                            throw new Error("Formato no reconocido o el servidor devolvió un error HTML en lugar del archivo.");
+                        // Tratar como imagen (PNG / JPG / WEBP)
+                        const imgDataUrl = await bufferToDataUrl(buffer);
+                        let imgEmbed;
+                        if (imgDataUrl.startsWith('data:image/jpeg')) {
+                            imgEmbed = await mergedPdf.embedJpg(imgDataUrl);
+                        } else {
+                            imgEmbed = await mergedPdf.embedPng(imgDataUrl);
                         }
+
+                        const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
+                        page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
+                        stampHeader(page, remitente, destinatario, idEntrada, position);
+
+                        logStatus(`  ✅ Imagen convertida e integrada al PDF.`);
+                        totalExitosos++;
                     }
 
                 } catch (itemErr) {
-                    logStatus(`  ❌ Error en este registro: ${itemErr.message}`);
+                    logStatus(`  ❌ No se pudo descargar este archivo por bloqueos del servidor.`);
+                    logStatus(`     URL del archivo: ${fileUrl}`);
                     totalOmitidos++;
                 }
             }
 
             // Resumen final
             logStatus(`\n--------------------------------------------------`);
-            logStatus(`Proceso completado. Éxitos: ${totalExitosos} | Omitidos/Fallidos: ${totalOmitidos}`);
+            logStatus(`Proceso completado. Éxitos: ${totalExitosos} | Omitidos/Bloqueados: ${totalOmitidos}`);
 
             if (totalExitosos > 0) {
                 try {
@@ -244,7 +256,7 @@
 
                     downloadBtn.href = finalUrl;
                     downloadBtn.download = `Cartas_Consolidadas_${Date.now()}.pdf`;
-                    downloadSummary.innerText = `Se consolidaron exitosamente ${totalExitosos} de ${rowsData.length} cartas procesadas.`;
+                    downloadSummary.innerText = `Se consolidaron exitosamente ${totalExitosos} de ${rowsData.length} cartas.`;
 
                     statusTitle.innerText = "¡Proceso Concluido!";
                     downloadCard.classList.remove('hidden');
@@ -252,8 +264,8 @@
                     logStatus(`❌ Error generando el archivo final: ${saveErr.message}`);
                 }
             } else {
-                statusTitle.innerText = "Proceso Finalizado sin Archivos Válidos";
-                alert("No se pudo procesar ningún archivo válido de las URLs proporcionadas.");
+                statusTitle.innerText = "Error de Acceso a las URLs";
+                alert("El servidor bloqueó el acceso a todas las URLs. Revisa la consola.");
             }
 
             processBtn.disabled = false;
@@ -266,20 +278,20 @@
             return '';
         }
 
-        // Verifica si los primeros 4 bytes corresponden a la cabecera %PDF
         function comprobarSiEsPDF(buffer) {
             if (!buffer || buffer.byteLength < 5) return false;
             const uint8 = new Uint8Array(buffer.slice(0, 5));
-            // %PDF = 0x25, 0x50, 0x44, 0x46
-            return uint8[0] === 0x25 && uint8[1] === 0x50 && uint8[2] === 0x44 && uint8[3] === 0x46;
+            return uint8[0] === 0x25 && uint8[1] === 0x50 && uint8[2] === 0x44 && uint8[3] === 0x46; // %PDF
         }
 
-        // Sistema de descarga con proxies de respaldo
+        // Descarga robusta multicanal con 6 proxies de respaldo
         async function descargarConFallbacks(urlOriginal) {
             const proxies = [
                 `https://corsproxy.io/?${encodeURIComponent(urlOriginal)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlOriginal)}`,
                 `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOriginal)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlOriginal)}`,
+                `https://thingproxy.freeboard.io/fetch/${urlOriginal}`,
+                `https://proxy.cors.sh/${urlOriginal}`,
                 urlOriginal
             ];
 
@@ -288,13 +300,47 @@
                     const res = await fetch(targetUrl);
                     if (res.ok) {
                         const buf = await res.arrayBuffer();
-                        if (buf.byteLength > 100) return buf;
+                        if (buf.byteLength > 100 && !esRespuestaHTML(buf)) {
+                            return buf;
+                        }
                     }
                 } catch (e) {
-                    // Si falla un proxy, intenta automáticamente con el siguiente
+                    // Intenta con el siguiente proxy si el actual falla
                 }
             }
-            throw new Error("No se pudo descargar el archivo a través de ningún proxy CORS.");
+            throw new Error("Servidor bloqueado por Anti-Bot/CORS.");
+        }
+
+        function esRespuestaHTML(buffer) {
+            if (!buffer || buffer.byteLength < 20) return true;
+            const arr = new Uint8Array(buffer.slice(0, 20));
+            let str = "";
+            for (let i = 0; i < arr.length; i++) {
+                str += String.fromCharCode(arr[i]);
+            }
+            str = str.toLowerCase();
+            return str.includes('<html') || str.includes('<!doctype') || str.includes('<head');
+        }
+
+        function intentarCargaCanvasImagen(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        resolve(canvas.toDataURL('image/png'));
+                    } catch (e) {
+                        resolve(null);
+                    }
+                };
+                img.onerror = () => resolve(null);
+                img.src = url + "?v=" + Date.now();
+            });
         }
 
         function bufferToDataUrl(buffer) {
@@ -302,7 +348,7 @@
                 const blob = new Blob([buffer]);
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error("Error leyendo el buffer como imagen."));
+                reader.onerror = () => reject(new Error("Error procesando imagen."));
                 reader.readAsDataURL(blob);
             });
         }
