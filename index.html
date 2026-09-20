@@ -6,11 +6,11 @@
     <title>Consolidador de Cartas - Cita con Dios</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS para leer Excel (.xlsx, .xls) y CSV -->
+    <!-- SheetJS para leer Excel y CSV -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- pdf-lib para manipular y unir PDFs -->
+    <!-- pdf-lib para manipular e integrar PDFs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <!-- Mammoth para extraer texto de Word (.docx) -->
+    <!-- Mammoth para leer archivos Word (.docx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -39,25 +39,14 @@
                     hover:file:bg-indigo-100 cursor-pointer border border-slate-300 rounded-lg"/>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Posición del Sello:</label>
-                    <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
-                        <option value="top-right">Esquina Superior Derecha</option>
-                        <option value="top-left">Esquina Superior Izquierda</option>
-                        <option value="bottom-right">Esquina Inferior Derecha</option>
-                        <option value="bottom-left">Esquina Inferior Izquierda</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Método de descarga CORS:</label>
-                    <select id="corsProxy" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
-                        <option value="corsproxy">CorsProxy.io (Recomendado)</option>
-                        <option value="codetabs">CodeTabs Proxy</option>
-                        <option value="allorigins">AllOrigins Proxy</option>
-                        <option value="direct">Sin Proxy (Directo)</option>
-                    </select>
-                </div>
+            <div class="mb-6">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Posición del Sello:</label>
+                <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                    <option value="top-right">Esquina Superior Derecha</option>
+                    <option value="top-left">Esquina Superior Izquierda</option>
+                    <option value="bottom-right">Esquina Inferior Derecha</option>
+                    <option value="bottom-left">Esquina Inferior Izquierda</option>
+                </select>
             </div>
 
             <button id="processBtn" disabled class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold rounded-lg shadow transition duration-200">
@@ -65,27 +54,27 @@
             </button>
         </div>
 
-        <!-- Barra de Progreso -->
+        <!-- Barra de Progreso y Consola -->
         <div id="statusCard" class="hidden bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
             <h2 class="text-lg font-semibold text-slate-700 mb-3" id="statusTitle">Procesando...</h2>
             <div class="w-full bg-slate-200 rounded-full h-3 mb-4 overflow-hidden">
                 <div id="progressBar" class="bg-indigo-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
-            <p id="statusText" class="text-xs font-mono bg-slate-900 text-green-400 p-4 rounded-lg max-h-60 overflow-y-auto leading-relaxed"></p>
+            <div id="statusText" class="text-xs font-mono bg-slate-900 text-green-400 p-4 rounded-lg h-64 overflow-y-auto leading-relaxed whitespace-pre-wrap"></div>
         </div>
 
         <!-- Descarga -->
         <div id="downloadCard" class="hidden bg-emerald-50 rounded-xl shadow-md p-6 border border-emerald-200 text-center">
             <h2 class="text-xl font-bold text-emerald-800 mb-2">¡Documento Final Generado!</h2>
-            <p class="text-emerald-700 text-sm mb-4">Se completó la consolidación del PDF.</p>
+            <p id="downloadSummary" class="text-emerald-700 text-sm mb-4"></p>
             <a id="downloadBtn" class="inline-flex items-center gap-2 py-3 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-lg transition duration-200 cursor-pointer">
                 Descargar PDF Consolidado
             </a>
         </div>
     </div>
 
-    <!-- Contenedor oculto para renderizado de Word e Imágenes -->
-    <div id="hiddenWordRender" style="position: absolute; left: -9999px; top: -9999px; width: 750px; background: white; padding: 30px; font-family: sans-serif;"></div>
+    <!-- Elemento oculto para renderizar archivos Word -->
+    <div id="hiddenWordRender" style="position: absolute; left: -9999px; top: -9999px; width: 750px; background: white; padding: 30px;"></div>
 
     <script>
         const dataFileInput = document.getElementById('dataFile');
@@ -96,6 +85,7 @@
         const statusTitle = document.getElementById('statusTitle');
         const downloadCard = document.getElementById('downloadCard');
         const downloadBtn = document.getElementById('downloadBtn');
+        const downloadSummary = document.getElementById('downloadSummary');
 
         let rowsData = [];
 
@@ -115,12 +105,12 @@
 
                     if (rowsData.length > 0) {
                         processBtn.disabled = false;
-                        alert(`¡Éxito! Se cargaron ${rowsData.length} registros desde el archivo.`);
+                        alert(`¡Archivo cargado con éxito! Se encontraron ${rowsData.length} registros.`);
                     } else {
-                        alert("El archivo está vacío o no se pudieron leer los registros.");
+                        alert("El archivo no contiene registros válidos.");
                     }
                 } catch (err) {
-                    alert("Error al leer el archivo: " + err.message);
+                    alert("Error al leer el archivo Excel/CSV: " + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -133,115 +123,140 @@
             statusCard.classList.remove('hidden');
             downloadCard.classList.add('hidden');
             progressBar.style.width = '0%';
-            statusText.innerText = 'Iniciando procesamiento...\n';
+            statusText.innerText = 'Iniciando pipeline de procesamiento...\n';
 
+            let mergedPdf;
             try {
-                const mergedPdf = await PDFLib.PDFDocument.create();
-                const selectedProxy = document.getElementById('corsProxy').value;
-                const position = document.getElementById('labelPosition').value;
+                mergedPdf = await PDFLib.PDFDocument.create();
+            } catch (e) {
+                logStatus("Error inicializando PDF: " + e.message);
+                processBtn.disabled = false;
+                return;
+            }
 
-                let totalProcesados = 0;
+            const position = document.getElementById('labelPosition').value;
+            let totalExitosos = 0;
+            let totalOmitidos = 0;
 
-                for (let i = 0; i < rowsData.length; i++) {
-                    const row = rowsData[i];
-                    const progress = Math.round(((i + 1) / rowsData.length) * 100);
-                    progressBar.style.width = `${progress}%`;
+            for (let i = 0; i < rowsData.length; i++) {
+                const row = rowsData[i];
+                const progress = Math.round(((i + 1) / rowsData.length) * 100);
+                progressBar.style.width = `${progress}%`;
 
-                    const remNom = getVal(row, ['REMITENTE Nombre', 'REMITENTE NOMBRE', 'Remitente Nombre', 'REMITENTE_NOMBRE']);
-                    const remApe = getVal(row, ['REMITENTE Apellidos', 'REMITENTE APELLIDOS', 'Remitente Apellidos', 'REMITENTE_APELLIDOS']);
-                    const destNom = getVal(row, ['DESTINATARIO Nombre', 'DESTINATARIO NOMBRE', 'Destinatario Nombre', 'DESTINATARIO_NOMBRE']);
-                    const destApe = getVal(row, ['DESTINATARIO Apellidos', 'DESTINATARIO APELLIDOS', 'Destinatario Apellidos', 'DESTINATARIO_APELLIDOS']);
-                    const idEntrada = getVal(row, ['ID de entrada', 'ID DE ENTRADA', 'ID entrada', 'ID', 'ID_ENTRADA']) || 'N/A';
-                    const fileUrl = getVal(row, ['carta', 'CARTA', 'Carta', 'URL', 'url']);
+                const remNom = getVal(row, ['REMITENTE Nombre', 'REMITENTE NOMBRE', 'Remitente Nombre', 'REMITENTE_NOMBRE']);
+                const remApe = getVal(row, ['REMITENTE Apellidos', 'REMITENTE APELLIDOS', 'Remitente Apellidos', 'REMITENTE_APELLIDOS']);
+                const destNom = getVal(row, ['DESTINATARIO Nombre', 'DESTINATARIO NOMBRE', 'Destinatario Nombre', 'DESTINATARIO_NOMBRE']);
+                const destApe = getVal(row, ['DESTINATARIO Apellidos', 'DESTINATARIO APELLIDOS', 'Destinatario Apellidos', 'DESTINATARIO_APELLIDOS']);
+                const idEntrada = getVal(row, ['ID de entrada', 'ID DE ENTRADA', 'ID entrada', 'ID', 'ID_ENTRADA']) || 'N/A';
+                const fileUrl = getVal(row, ['carta', 'CARTA', 'Carta', 'URL', 'url']);
 
-                    const remitente = `${remNom} ${remApe}`.trim() || 'No especificado';
-                    const destinatario = `${destNom} ${destApe}`.trim() || 'No especificado';
+                const remitente = `${remNom} ${remApe}`.trim() || 'No especificado';
+                const destinatario = `${destNom} ${destApe}`.trim() || 'No especificado';
 
-                    logStatus(`\n[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
+                logStatus(`\n[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
 
-                    if (!fileUrl) {
-                        logStatus(`  ⚠️ Omitido: Sin enlace URL.`);
-                        continue;
+                if (!fileUrl) {
+                    logStatus(`  ⚠️ Registro omitido: No tiene URL de carta asociada.`);
+                    totalOmitidos++;
+                    continue;
+                }
+
+                // BLOQUE AISLADO POR REGISTRO: Si falla, NO detiene los demás registros
+                try {
+                    const buffer = await descargarConFallbacks(fileUrl);
+                    
+                    if (!buffer || buffer.byteLength < 10) {
+                        throw new Error("El archivo descargado está vacío o corrupto.");
                     }
 
-                    try {
-                        const buffer = await descargarBinarioRobusto(fileUrl, selectedProxy);
+                    const esPDF = comprobarSiEsPDF(buffer);
+                    const urlLower = fileUrl.toLowerCase();
+
+                    if (esPDF) {
+                        // Procesar como documento PDF genuino
+                        const loadedPdf = await PDFLib.PDFDocument.load(buffer, { ignoreEncryption: true });
+                        const pageIndices = loadedPdf.getPageIndices();
+                        const copiedPages = await mergedPdf.copyPages(loadedPdf, pageIndices);
                         
-                        // Verificación previa: Comprobar que no sea una respuesta HTML de error
-                        if (esRespuestaHTML(buffer)) {
-                            throw new Error("El servidor devolvió una página HTML en lugar del archivo original (posible bloqueo CORS/Seguridad).");
-                        }
-
-                        const urlLower = fileUrl.toLowerCase();
-
-                        // 1. FORMATO PDF
-                        if (urlLower.includes('.pdf')) {
-                            const loadedPdf = await PDFLib.PDFDocument.load(buffer);
-                            const pages = await mergedPdf.copyPages(loadedPdf, loadedPdf.getPageIndices());
-                            pages.forEach(p => {
-                                stampHeader(p, remitente, destinatario, idEntrada, position);
-                                mergedPdf.addPage(p);
-                            });
-                            logStatus(`  ✅ PDF procesado e integrado.`);
-                            totalProcesados++;
-
-                        // 2. FORMATO WORD (.DOCX)
-                        } else if (urlLower.includes('.docx')) {
-                            const hiddenRender = document.getElementById('hiddenWordRender');
-                            const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
-                            hiddenRender.innerHTML = result.value;
-
-                            const canvas = await html2canvas(hiddenRender, { scale: 1.5 });
-                            const imgDataUrl = canvas.toDataURL('image/png');
-                            const imgEmbed = await mergedPdf.embedPng(imgDataUrl);
-
-                            const page = mergedPdf.addPage([canvas.width, canvas.height]);
-                            page.drawImage(imgEmbed, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+                        copiedPages.forEach(page => {
                             stampHeader(page, remitente, destinatario, idEntrada, position);
-                            logStatus(`  ✅ Documento Word procesado e integrado.`);
-                            totalProcesados++;
+                            mergedPdf.addPage(page);
+                        });
 
-                        // 3. FORMATOS DE IMAGEN
-                        } else if (urlLower.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
-                            const imgDataUrl = await convertBufferToCanvasDataUrl(buffer);
-                            const imgEmbed = await mergedPdf.embedPng(imgDataUrl);
+                        logStatus(`  ✅ PDF procesado e integrado exitosamente (${copiedPages.length} pág).`);
+                        totalExitosos++;
+
+                    } else if (urlLower.includes('.docx')) {
+                        // Procesar como documento Word
+                        const hiddenRender = document.getElementById('hiddenWordRender');
+                        const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+                        hiddenRender.innerHTML = result.value;
+
+                        const canvas = await html2canvas(hiddenRender, { scale: 1.5 });
+                        const imgDataUrl = canvas.toDataURL('image/png');
+                        const imgEmbed = await mergedPdf.embedPng(imgDataUrl);
+
+                        const page = mergedPdf.addPage([canvas.width, canvas.height]);
+                        page.drawImage(imgEmbed, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+                        stampHeader(page, remitente, destinatario, idEntrada, position);
+
+                        logStatus(`  ✅ Documento Word (.docx) procesado e integrado.`);
+                        totalExitosos++;
+
+                    } else {
+                        // Intentar procesar como imagen (JPG, PNG, o PDF escaneado guardado como imagen)
+                        try {
+                            const imgDataUrl = await bufferToDataUrl(buffer);
+                            let imgEmbed;
+                            if (imgDataUrl.startsWith('data:image/jpeg')) {
+                                imgEmbed = await mergedPdf.embedJpg(imgDataUrl);
+                            } else {
+                                imgEmbed = await mergedPdf.embedPng(imgDataUrl);
+                            }
 
                             const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
                             page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
                             stampHeader(page, remitente, destinatario, idEntrada, position);
-                            logStatus(`  ✅ Imagen procesada e integrada.`);
-                            totalProcesados++;
 
-                        } else {
-                            logStatus(`  ⚠️ Formato de archivo no soportado.`);
+                            logStatus(`  ✅ Imagen convertida e integrada al PDF.`);
+                            totalExitosos++;
+                        } catch (imgErr) {
+                            throw new Error("Formato no reconocido o el servidor devolvió un error HTML en lugar del archivo.");
                         }
-
-                    } catch (itemErr) {
-                        logStatus(`  ❌ No se pudo procesar este registro: ${itemErr.message}`);
                     }
+
+                } catch (itemErr) {
+                    logStatus(`  ❌ Error en este registro: ${itemErr.message}`);
+                    totalOmitidos++;
                 }
-
-                if (totalProcesados === 0) {
-                    throw new Error("No se pudo descargar o procesar ningún archivo de las URLs provistas.");
-                }
-
-                logStatus('\nCompilando archivo PDF final...');
-                const pdfBytes = await mergedPdf.save();
-
-                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                const finalUrl = URL.createObjectURL(blob);
-
-                downloadBtn.href = finalUrl;
-                downloadBtn.download = `Cartas_Consolidadas_${Date.now()}.pdf`;
-
-                statusTitle.innerText = "¡Proceso Completado!";
-                downloadCard.classList.remove('hidden');
-
-            } catch (err) {
-                logStatus(`\n❌ Proceso finalizado con observaciones: ${err.message}`);
-            } finally {
-                processBtn.disabled = false;
             }
+
+            // Resumen final
+            logStatus(`\n--------------------------------------------------`);
+            logStatus(`Proceso completado. Éxitos: ${totalExitosos} | Omitidos/Fallidos: ${totalOmitidos}`);
+
+            if (totalExitosos > 0) {
+                try {
+                    logStatus('Generando el archivo PDF consolidado final...');
+                    const pdfBytes = await mergedPdf.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const finalUrl = URL.createObjectURL(blob);
+
+                    downloadBtn.href = finalUrl;
+                    downloadBtn.download = `Cartas_Consolidadas_${Date.now()}.pdf`;
+                    downloadSummary.innerText = `Se consolidaron exitosamente ${totalExitosos} de ${rowsData.length} cartas procesadas.`;
+
+                    statusTitle.innerText = "¡Proceso Concluido!";
+                    downloadCard.classList.remove('hidden');
+                } catch (saveErr) {
+                    logStatus(`❌ Error generando el archivo final: ${saveErr.message}`);
+                }
+            } else {
+                statusTitle.innerText = "Proceso Finalizado sin Archivos Válidos";
+                alert("No se pudo procesar ningún archivo válido de las URLs proporcionadas.");
+            }
+
+            processBtn.disabled = false;
         });
 
         function getVal(row, keys) {
@@ -251,69 +266,44 @@
             return '';
         }
 
-        // Descarga multicanal para sobrepasar bloqueos CORS
-        async function descargarBinarioRobusto(url, modo) {
-            const proxies = [];
-            
-            if (modo === 'corsproxy') {
-                proxies.push("https://corsproxy.io/?" + encodeURIComponent(url));
-                proxies.push("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url));
-            } else if (modo === 'codetabs') {
-                proxies.push("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url));
-                proxies.push("https://corsproxy.io/?" + encodeURIComponent(url));
-            } else if (modo === 'allorigins') {
-                proxies.push("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
-                proxies.push("https://corsproxy.io/?" + encodeURIComponent(url));
-            } else {
-                proxies.push(url); // Directo
-            }
+        // Verifica si los primeros 4 bytes corresponden a la cabecera %PDF
+        function comprobarSiEsPDF(buffer) {
+            if (!buffer || buffer.byteLength < 5) return false;
+            const uint8 = new Uint8Array(buffer.slice(0, 5));
+            // %PDF = 0x25, 0x50, 0x44, 0x46
+            return uint8[0] === 0x25 && uint8[1] === 0x50 && uint8[2] === 0x44 && uint8[3] === 0x46;
+        }
 
-            for (let proxyUrl of proxies) {
+        // Sistema de descarga con proxies de respaldo
+        async function descargarConFallbacks(urlOriginal) {
+            const proxies = [
+                `https://corsproxy.io/?${encodeURIComponent(urlOriginal)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlOriginal)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOriginal)}`,
+                urlOriginal
+            ];
+
+            for (let targetUrl of proxies) {
                 try {
-                    const res = await fetch(proxyUrl);
+                    const res = await fetch(targetUrl);
                     if (res.ok) {
                         const buf = await res.arrayBuffer();
                         if (buf.byteLength > 100) return buf;
                     }
                 } catch (e) {
-                    // Intenta con el siguiente proxy en la lista
+                    // Si falla un proxy, intenta automáticamente con el siguiente
                 }
             }
-
-            throw new Error("El servidor restringió la descarga por CORS a través de todos los proxies.");
+            throw new Error("No se pudo descargar el archivo a través de ningún proxy CORS.");
         }
 
-        // Comprueba si el binario descargado es en realidad texto HTML (error)
-        function esRespuestaHTML(buffer) {
-            if (!buffer || buffer.byteLength < 20) return true;
-            const arr = new Uint8Array(buffer.slice(0, 20));
-            let str = "";
-            for (let i = 0; i < arr.length; i++) {
-                str += String.fromCharCode(arr[i]);
-            }
-            str = str.toLowerCase();
-            return str.includes('<html') || str.includes('<!doctype') || str.includes('<head');
-        }
-
-        function convertBufferToCanvasDataUrl(buffer) {
+        function bufferToDataUrl(buffer) {
             return new Promise((resolve, reject) => {
                 const blob = new Blob([buffer]);
-                const url = URL.createObjectURL(blob);
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
-                    URL.revokeObjectURL(url);
-                    resolve(canvas.toDataURL('image/png'));
-                };
-                img.onerror = () => {
-                    URL.revokeObjectURL(url);
-                    reject(new Error("Formato de imagen no decodificable."));
-                };
-                img.src = url;
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error("Error leyendo el buffer como imagen."));
+                reader.readAsDataURL(blob);
             });
         }
 
@@ -325,7 +315,7 @@
             let x = 20;
             let y = height - 20;
 
-            if (position.includes('right')) x = width - 240;
+            if (position.includes('right')) x = Math.max(20, width - 240);
             if (position.includes('bottom')) y = 60;
 
             page.drawRectangle({
