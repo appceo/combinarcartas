@@ -144,7 +144,6 @@
                     const tipo = detectarTipo(buffer, link);
 
                     if (tipo === 'pdf') {
-                        // Carga limpia de PDF usando ignoreEncryption para máxima compatibilidad
                         const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
                         const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
                         pages.forEach(p => {
@@ -180,7 +179,7 @@
                         okCount++;
                     }
                 } catch (err) {
-                    log(`  ❌ Error procesando documento: ${err.message}`);
+                    log(`  ❌ Error descargando carta: ${err.message}`);
                 }
             }
 
@@ -217,52 +216,64 @@
             return await res.text();
         }
 
-        // MOTOR DE DESCARGA PROBADO Y FUNCIONAL PARA RED Y PDFS
+        // MOTOR DE DESCARGA AVANZADO PARA BLOQUEOS RÍGIDOS
         async function descargarConMultiproxy(url, ms) {
-            // 1. Intento Directo
+            // 1. Intento por Proxy de Bypass Directo (Con Header Forzado)
             try {
                 const c1 = new AbortController();
-                const t1 = setTimeout(() => c1.abort(), 3000);
-                const r1 = await fetch(url, { signal: c1.signal });
+                const t1 = setTimeout(() => c1.abort(), ms);
+                const r1 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: c1.signal });
                 clearTimeout(t1);
-                if (r1.ok) return await r1.arrayBuffer();
+                if (r1.ok) {
+                    const buf = await r1.arrayBuffer();
+                    if (buf.byteLength > 500) return buf;
+                }
             } catch (e) {}
 
-            // 2. Proxy CorsProxy (Optimizante de flujos binarios PDF)
+            // 2. Intento por Proxy especializado en Wordpress/GravityForms
             try {
                 const c2 = new AbortController();
                 const t2 = setTimeout(() => c2.abort(), ms);
                 const r2 = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: c2.signal });
                 clearTimeout(t2);
-                if (r2.ok) return await r2.arrayBuffer();
+                if (r2.ok) {
+                    const buf = await r2.arrayBuffer();
+                    if (buf.byteLength > 500) return buf;
+                }
             } catch (e) {}
 
-            // 3. Proxy CodeTabs (Resguardo binario)
+            // 3. Intento vía ThingProxy
             try {
                 const c3 = new AbortController();
                 const t3 = setTimeout(() => c3.abort(), ms);
-                const r3 = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, { signal: c3.signal });
+                const r3 = await fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: c3.signal });
                 clearTimeout(t3);
-                if (r3.ok) return await r3.arrayBuffer();
+                if (r3.ok) {
+                    const buf = await r3.arrayBuffer();
+                    if (buf.byteLength > 500) return buf;
+                }
             } catch (e) {}
 
-            throw new Error("No se pudo descargar el archivo.");
+            // 4. Intento Directo (por si el cliente deshabilitó CORS o es el mismo origen)
+            try {
+                const c4 = new AbortController();
+                const t4 = setTimeout(() => c4.abort(), 3000);
+                const r4 = await fetch(url, { signal: c4.signal });
+                clearTimeout(t4);
+                if (r4.ok) return await r4.arrayBuffer();
+            } catch (e) {}
+
+            throw new Error("El servidor de origen bloqueó la lectura remota del PDF.");
         }
 
-        // DETECCIÓN DOBLE: POR FIRMA DE ARCHIVO Y POR EXTENSIÓN EN LA URL
         function detectarTipo(buf, url) {
             const u = new Uint8Array(buf.slice(0, 4));
-            // %PDF
             if (u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) return 'pdf';
-            // PK.. (DOCX)
             if (u[0] === 0x50 && u[1] === 0x4B) return 'docx';
-            // Validación por URL en caso de cabeceras comprimidas
             if (url.toLowerCase().includes('.pdf')) return 'pdf';
-            
             return 'img';
         }
 
-        // EXTRACCIÓN AUTOMÁTICA DE NOMBRE + APELLIDO
         function obtenerNombreCompleto(row, tipo) {
             let nombre = '';
             let apellido = '';
