@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consolidador de Cartas - GitHub Pages</title>
+    <title>Consolidador de Cartas - Definitivo</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- pdf-lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <!-- Mammoth (DOCX) -->
+    <!-- Mammoth (para DOCX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -19,17 +19,17 @@
 
     <div class="max-w-4xl mx-auto py-10 px-4">
         <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
-            <h1 class="text-2xl font-bold text-indigo-700 mb-2">Unificador de Cartas</h1>
+            <h1 class="text-2xl font-bold text-indigo-700 mb-2">Unificador de Cartas v3.0</h1>
             <p class="text-slate-600 text-sm">
-                Soporta enlaces de Google Sheets o archivos locales Excel/CSV.
+                Procesamiento directo de Google Sheets, PDF, DOCX, JPG y PNG.
             </p>
         </div>
 
         <!-- Formulario -->
         <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200 space-y-4">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Opción A: Enlace de Google Sheets (Compartido o Publicado):</label>
-                <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/1R1M.../edit?usp=sharing" class="w-full text-sm border-slate-300 rounded-lg p-2.5 border" />
+                <label class="block text-sm font-medium text-slate-700 mb-1">Opción A: Enlace de Google Sheets:</label>
+                <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/1R1M.../edit?gid=1157002826" class="w-full text-sm border-slate-300 rounded-lg p-2.5 border" />
             </div>
 
             <div class="text-center font-bold text-slate-400 text-xs">--- O ---</div>
@@ -51,7 +51,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1">Timeout por Archivo (Segundos):</label>
-                    <input type="number" id="timeoutSec" value="5" min="1" max="15" class="w-full text-sm border-slate-300 rounded-lg p-2 border" />
+                    <input type="number" id="timeoutSec" value="8" min="2" max="20" class="w-full text-sm border-slate-300 rounded-lg p-2 border" />
                 </div>
             </div>
 
@@ -104,15 +104,13 @@
             statusText.innerText = "";
 
             if (rawUrl) {
-                logStatus("Transformando enlace de Google Sheets a CSV...");
-                const csvExportUrl = transformarUrlGoogleSheets(rawUrl);
-                
+                logStatus("Obteniendo datos desde Google Sheets...");
                 try {
-                    const csvText = await descargarTextoConProxy(csvExportUrl);
+                    const csvText = await obtenerCSVGoogleSheets(rawUrl);
                     const workbook = XLSX.read(csvText, { type: 'string' });
                     rowsData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
                 } catch (e) {
-                    alert("Error descargando el Google Sheet: " + e.message + "\nAsegúrate de que la hoja tenga permisos de 'Cualquier persona con el enlace puede ver'.");
+                    alert("Error al leer Google Sheets: " + e.message);
                     return;
                 }
             } else if (localFile) {
@@ -121,16 +119,16 @@
                     const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
                     rowsData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
                 } catch (e) {
-                    alert("Error leyendo el archivo local: " + e.message);
+                    alert("Error al leer el archivo local: " + e.message);
                     return;
                 }
             } else {
-                alert("Ingresa un enlace de Google Sheets o selecciona un archivo local.");
+                alert("Por favor ingresa una URL de Google Sheets o sube un archivo Excel.");
                 return;
             }
 
             if (rowsData.length === 0) {
-                alert("No se obtuvieron registros de la hoja.");
+                alert("No se encontraron registros en el archivo.");
                 return;
             }
 
@@ -140,7 +138,7 @@
             const timeoutSeconds = parseInt(document.getElementById('timeoutSec').value) * 1000;
 
             processBtn.disabled = true;
-            logStatus(`Se leyeron ${rowsData.length} filas correctamente. Iniciando descarga de cartas...\n`);
+            logStatus(`Lectura exitosa: ${rowsData.length} registros cargados.\nIniciando procesamiento de archivos...\n`);
 
             let exitosos = 0;
             let omitidos = 0;
@@ -154,25 +152,28 @@
                 const destNom = getValFlexible(row, ['destinatarionombre', 'destinatario_nombre', 'nombre_destinatario']);
                 const destApe = getValFlexible(row, ['destinatarioapellidos', 'destinatario_apellidos', 'apellidos_destinatario']);
                 const idEntrada = getValFlexible(row, ['identrada', 'id_de_entrada', 'id', 'id_entrada']) || 'N/A';
-                const fileUrl = getValFlexible(row, ['carta', 'url', 'enlace', 'adjunto', 'cartas']);
+                let fileUrl = getValFlexible(row, ['carta', 'url', 'enlace', 'adjunto', 'cartas', 'link']);
 
                 const remitente = `${remNom} ${remApe}`.trim() || 'No especificado';
                 const destinatario = `${destNom} ${destApe}`.trim() || 'No especificado';
 
                 logStatus(`[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
 
-                await new Promise(r => setTimeout(r, 40));
+                await new Promise(r => setTimeout(r, 30));
 
                 if (!fileUrl || !fileUrl.startsWith('http')) {
-                    logStatus(`  ⚠️ Omitido: URL vacía o inválida ("${fileUrl}")`);
+                    logStatus(`  ⚠️ Omitido: URL inválida o vacía.`);
                     omitidos++;
                     continue;
                 }
 
+                // Normalización de enlaces de Google Drive
+                fileUrl = normalizarUrlDrive(fileUrl);
+
                 try {
-                    const buffer = await descargarBinarioConProxy(fileUrl, timeoutSeconds);
+                    const buffer = await descargarArchivoSmarter(fileUrl, timeoutSeconds);
                     if (!buffer || buffer.byteLength < 50) {
-                        throw new Error("Respuesta vacía del servidor.");
+                        throw new Error("El archivo descargado está vacío o no es válido.");
                     }
 
                     const tipo = detectarTipoArchivo(buffer, fileUrl);
@@ -184,7 +185,7 @@
                             stampHeader(p, remitente, destinatario, idEntrada, position, rgb);
                             mergedPdf.addPage(p);
                         });
-                        logStatus(`  ✅ PDF procesado (${pages.length} pág).`);
+                        logStatus(`  ✅ Documento PDF procesado (${pages.length} pág).`);
                         exitosos++;
 
                     } else if (tipo === 'docx') {
@@ -192,7 +193,7 @@
                         const parsed = await mammoth.convertToHtml({ arrayBuffer: buffer });
                         wordRenderBox.innerHTML = parsed.value;
 
-                        await new Promise(r => setTimeout(r, 100));
+                        await new Promise(r => setTimeout(r, 120));
 
                         const canvas = await html2canvas(wordRenderBox, { scale: 1.2, logging: false });
                         const imgDataUrl = canvas.toDataURL('image/png');
@@ -203,103 +204,138 @@
                         stampHeader(page, remitente, destinatario, idEntrada, position, rgb);
 
                         wordRenderBox.innerHTML = '';
-                        logStatus(`  ✅ Documento Word (.docx) integrado.`);
+                        logStatus(`  ✅ Documento Word (.docx) procesado.`);
                         exitosos++;
 
                     } else {
                         const imgDataUrl = await bufferToDataUrl(buffer);
-                        let imgEmbed = (imgDataUrl.startsWith('data:image/jpeg') || imgDataUrl.startsWith('data:image/jpg'))
-                            ? await mergedPdf.embedJpg(imgDataUrl)
-                            : await mergedPdf.embedPng(imgDataUrl);
+                        let imgEmbed;
+                        if (imgDataUrl.startsWith('data:image/jpeg') || imgDataUrl.startsWith('data:image/jpg')) {
+                            imgEmbed = await mergedPdf.embedJpg(imgDataUrl);
+                        } else {
+                            imgEmbed = await mergedPdf.embedPng(imgDataUrl);
+                        }
 
                         const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
                         page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
                         stampHeader(page, remitente, destinatario, idEntrada, position, rgb);
-                        logStatus(`  ✅ Imagen integrada.`);
+                        logStatus(`  ✅ Imagen (JPG/PNG) integrada.`);
                         exitosos++;
                     }
 
                 } catch (err) {
-                    logStatus(`  ❌ Error descargando carta: ${err.message}`);
+                    logStatus(`  ❌ Error al procesar archivo: ${err.message}`);
                     omitidos++;
                 }
             }
 
             logStatus(`\n==========================================`);
-            logStatus(`Finalizado. Éxitos: ${exitosos} | Omitidos: ${omitidos}`);
+            logStatus(`Proceso completado. Éxitos: ${exitosos} | Omitidos: ${omitidos}`);
 
             if (exitosos > 0) {
                 const pdfBytes = await mergedPdf.save();
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });
                 downloadBtn.href = URL.createObjectURL(blob);
                 downloadBtn.download = `Cartas_Consolidadas.pdf`;
-                downloadSummary.innerText = `Se unieron ${exitosos} registros correctamente.`;
+                downloadSummary.innerText = `Se unieron ${exitosos} cartas correctamente.`;
                 statusTitle.innerText = "¡Proceso Completado!";
                 downloadCard.classList.remove('hidden');
             } else {
-                statusTitle.innerText = "Proceso Finalizado Sin Archivos";
-                alert("No se pudo procesar ninguna carta. Revisa que las URLs de las cartas sean de acceso público.");
+                statusTitle.innerText = "Proceso terminado sin archivos";
+                alert("No se pudo procesar ningún archivo. Asegúrate de que las URLs de las cartas sean públicas.");
             }
 
             processBtn.disabled = false;
         });
 
-        function transformarUrlGoogleSheets(url) {
-            if (url.includes('docs.google.com/spreadsheets')) {
+        async function obtenerCSVGoogleSheets(url) {
+            const sheetIdMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (!sheetIdMatch || !sheetIdMatch[1]) {
+                throw new Error("No se reconoció el ID de Google Sheets en la URL.");
+            }
+            const docId = sheetIdMatch[1];
+            
+            let gidParam = "";
+            const gidMatch = url.match(/[?&]gid=([0-9]+)/);
+            if (gidMatch && gidMatch[1]) {
+                gidParam = `&gid=${gidMatch[1]}`;
+            }
+
+            // URL nativa de exportación que evade problemas de CORS en la mayoría de navegadores
+            const directGvizUrl = `https://docs.google.com/spreadsheets/d/${docId}/gviz/tq?tqx=out:csv${gidParam}`;
+
+            try {
+                const res = await fetch(directGvizUrl);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (!text.startsWith('<!DOCTYPE html>')) {
+                        return text;
+                    }
+                }
+            } catch (e) { }
+
+            // Fallback mediante proxy si la llamada directa es bloqueada
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(directGvizUrl)}`;
+            const resProxy = await fetch(proxyUrl);
+            if (resProxy.ok) {
+                const text = await resProxy.text();
+                if (!text.startsWith('<!DOCTYPE html>')) {
+                    return text;
+                }
+            }
+            throw new Error("No se pudo descargar el documento. Verifica que el archivo en Google Drive tenga permiso de acceso público ('Cualquier persona con el enlace').");
+        }
+
+        function normalizarUrlDrive(url) {
+            if (url.includes('drive.google.com')) {
                 const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
                 if (match && match[1]) {
-                    return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+                    return `https://drive.google.com/uc?export=download&id=${match[1]}`;
                 }
             }
             return url;
         }
 
-        async function descargarTextoConProxy(url) {
-            const proxies = [
-                "https://api.allorigins.win/raw?url=",
-                "https://corsproxy.io/?"
-            ];
-
-            for (let proxy of proxies) {
-                try {
-                    const res = await fetch(proxy + encodeURIComponent(url));
-                    if (res.ok) {
-                        const text = await res.text();
-                        if (!text.includes('<!DOCTYPE html>') && text.length > 20) {
-                            return text;
-                        }
-                    }
-                } catch (e) {}
+        async function descargarArchivoSmarter(url, timeoutMs) {
+            // Intentar primero descarga directa nativa
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(timer);
+                if (res.ok) {
+                    return await res.arrayBuffer();
+                }
+            } catch (e) {
+                clearTimeout(timer);
             }
-            throw new Error("No se pudo obtener el CSV público de Google Sheets. Asegúrate de compartir el archivo en Google Drive.");
-        }
 
-        async function descargarBinarioConProxy(url, timeoutMs) {
+            // Si falla por CORS, intentar a través de Proxies
             const proxies = [
                 "https://api.allorigins.win/raw?url=",
                 "https://corsproxy.io/?"
             ];
 
             for (let proxy of proxies) {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), timeoutMs);
+                const proxyController = new AbortController();
+                const proxyTimer = setTimeout(() => proxyController.abort(), timeoutMs);
                 try {
-                    const res = await fetch(proxy + encodeURIComponent(url), { signal: controller.signal });
-                    clearTimeout(timer);
+                    const res = await fetch(proxy + encodeURIComponent(url), { signal: proxyController.signal });
+                    clearTimeout(proxyTimer);
                     if (res.ok) {
                         return await res.arrayBuffer();
                     }
                 } catch (e) {
-                    clearTimeout(timer);
+                    clearTimeout(proxyTimer);
                 }
             }
-            throw new Error("Tiempo de espera agotado o acceso denegado a la URL del archivo.");
+            throw new Error("No se pudo descargar el archivo (CORS o enlace no público).");
         }
 
         function detectarTipoArchivo(buf, url) {
             const u = new Uint8Array(buf.slice(0, 4));
             if (u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) return 'pdf';
-            if (u[0] === 0x50 && u[1] === 0x4B || url.toLowerCase().includes('.docx')) return 'docx';
+            if ((u[0] === 0x50 && u[1] === 0x4B) || url.toLowerCase().includes('.docx')) return 'docx';
             return 'imagen';
         }
 
