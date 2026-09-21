@@ -6,11 +6,11 @@
     <title>Consolidador de Cartas - Cita con Dios</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS para leer Excel y CSV -->
+    <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- pdf-lib para manipular e integrar PDFs -->
+    <!-- pdf-lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <!-- Mammoth para leer archivos Word (.docx) -->
+    <!-- Mammoth -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -22,34 +22,50 @@
         <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
             <h1 class="text-2xl font-bold text-indigo-700 mb-2">Unificador de Cartas a PDF</h1>
             <p class="text-slate-600 text-sm">
-                Sube tu archivo de <strong>Excel (.xlsx, .xls)</strong> o <strong>CSV</strong>. La aplicación procesará cada carta, estampará el 
-                <strong>ID de entrada</strong>, <strong>Remitente</strong> y <strong>Destinatario</strong> en cada página y unirá todo en un único PDF listo para imprimir.
+                Sube tu archivo de <strong>Excel / CSV</strong>. Si el servidor remoto bloquea las descargas web, puedes adjuntar opcionalmente la carpeta de cartas descargadas para procesarlas en local al 100%.
             </p>
         </div>
 
         <!-- Panel de Carga -->
-        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-slate-700 mb-2">Cargar archivo Excel o CSV:</label>
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">1. Archivo Excel o CSV con las respuestas:</label>
                 <input type="file" id="dataFile" accept=".csv, .xlsx, .xls" class="block w-full text-sm text-slate-500
-                    file:mr-4 file:py-2.5 file:px-4
+                    file:mr-4 file:py-2 file:px-4
                     file:rounded-lg file:border-0
                     file:text-sm file:font-semibold
                     file:bg-indigo-50 file:text-indigo-700
                     hover:file:bg-indigo-100 cursor-pointer border border-slate-300 rounded-lg"/>
             </div>
 
-            <div class="mb-6">
-                <label class="block text-xs font-medium text-slate-600 mb-1">Posición del Sello:</label>
-                <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
-                    <option value="top-right">Esquina Superior Derecha</option>
-                    <option value="top-left">Esquina Superior Izquierda</option>
-                    <option value="bottom-right">Esquina Inferior Derecha</option>
-                    <option value="bottom-left">Esquina Inferior Izquierda</option>
-                </select>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">2. Archivos o Carpeta Local de Cartas (Opcional - Si falla la descarga web):</label>
+                <input type="file" id="localFiles" multiple accept=".pdf, .docx, .png, .jpg, .jpeg" class="block w-full text-sm text-slate-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-emerald-50 file:text-emerald-700
+                    hover:file:bg-emerald-100 cursor-pointer border border-slate-300 rounded-lg"/>
+                <p class="text-xs text-slate-500 mt-1">Si subes archivos locales, el sistema emparejará por nombre de archivo o ID de entrada.</p>
             </div>
 
-            <button id="processBtn" disabled class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold rounded-lg shadow transition duration-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Posición del Sello:</label>
+                    <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                        <option value="top-right">Esquina Superior Derecha</option>
+                        <option value="top-left">Esquina Superior Izquierda</option>
+                        <option value="bottom-right">Esquina Inferior Derecha</option>
+                        <option value="bottom-left">Esquina Inferior Izquierda</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Proxy Servidor Web:</label>
+                    <input type="text" id="customProxy" placeholder="URL Proxy personalizado (opcional)" class="w-full text-sm border-slate-300 rounded-lg p-2 border" value="https://api.allorigins.win/raw?url=" />
+                </div>
+            </div>
+
+            <button id="processBtn" disabled class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold rounded-lg shadow transition duration-200 mt-4">
                 Procesar y Generar PDF Consolidado
             </button>
         </div>
@@ -73,11 +89,11 @@
         </div>
     </div>
 
-    <!-- Elemento oculto para renderizar archivos Word e Imágenes con Fallback -->
     <div id="hiddenWordRender" style="position: absolute; left: -9999px; top: -9999px; width: 750px; background: white; padding: 30px;"></div>
 
     <script>
         const dataFileInput = document.getElementById('dataFile');
+        const localFilesInput = document.getElementById('localFiles');
         const processBtn = document.getElementById('processBtn');
         const statusCard = document.getElementById('statusCard');
         const progressBar = document.getElementById('progressBar');
@@ -88,6 +104,7 @@
         const downloadSummary = document.getElementById('downloadSummary');
 
         let rowsData = [];
+        let localFilesMap = new Map();
 
         dataFileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -98,22 +115,28 @@
                 try {
                     const data = new Uint8Array(event.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheet];
-                    
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     rowsData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
                     if (rowsData.length > 0) {
                         processBtn.disabled = false;
-                        alert(`¡Archivo cargado con éxito! Se encontraron ${rowsData.length} registros.`);
-                    } else {
-                        alert("El archivo no contiene registros válidos.");
+                        alert(`¡Excel cargado! ${rowsData.length} registros listos.`);
                     }
                 } catch (err) {
-                    alert("Error al leer el archivo Excel/CSV: " + err.message);
+                    alert("Error en archivo Excel: " + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);
+        });
+
+        localFilesInput.addEventListener('change', (e) => {
+            localFilesMap.clear();
+            for (let f of e.target.files) {
+                localFilesMap.set(f.name.toLowerCase(), f);
+            }
+            if (localFilesMap.size > 0) {
+                alert(`Cargados ${localFilesMap.size} archivos locales de respaldo.`);
+            }
         });
 
         processBtn.addEventListener('click', async () => {
@@ -123,25 +146,18 @@
             statusCard.classList.remove('hidden');
             downloadCard.classList.add('hidden');
             progressBar.style.width = '0%';
-            statusText.innerText = 'Iniciando pipeline de procesamiento...\n';
+            statusText.innerText = 'Iniciando proceso...\n';
 
-            let mergedPdf;
-            try {
-                mergedPdf = await PDFLib.PDFDocument.create();
-            } catch (e) {
-                logStatus("Error inicializando PDF: " + e.message);
-                processBtn.disabled = false;
-                return;
-            }
-
+            let mergedPdf = await PDFLib.PDFDocument.create();
             const position = document.getElementById('labelPosition').value;
+            const customProxyPrefix = document.getElementById('customProxy').value.trim();
+
             let totalExitosos = 0;
             let totalOmitidos = 0;
 
             for (let i = 0; i < rowsData.length; i++) {
                 const row = rowsData[i];
-                const progress = Math.round(((i + 1) / rowsData.length) * 100);
-                progressBar.style.width = `${progress}%`;
+                progressBar.style.width = `${Math.round(((i + 1) / rowsData.length) * 100)}%`;
 
                 const remNom = getVal(row, ['REMITENTE Nombre', 'REMITENTE NOMBRE', 'Remitente Nombre', 'REMITENTE_NOMBRE']);
                 const remApe = getVal(row, ['REMITENTE Apellidos', 'REMITENTE APELLIDOS', 'Remitente Apellidos', 'REMITENTE_APELLIDOS']);
@@ -155,51 +171,38 @@
 
                 logStatus(`\n[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
 
-                if (!fileUrl) {
-                    logStatus(`  ⚠️ Registro omitido: No tiene URL de carta asociada.`);
-                    totalOmitidos++;
-                    continue;
-                }
-
                 try {
                     let buffer = null;
-                    try {
-                        buffer = await descargarConFallbacks(fileUrl);
-                    } catch (dlErr) {
-                        // Fallback especial para imágenes mediante etiqueta <img> si los proxies son bloqueados
-                        logStatus(`  ⚠️ Proxy bloqueado. Intentando decodificación directa por canvas...`);
-                        const canvasDataUrl = await intentarCargaCanvasImagen(fileUrl);
-                        if (canvasDataUrl) {
-                            const imgEmbed = await mergedPdf.embedPng(canvasDataUrl);
-                            const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
-                            page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
-                            stampHeader(page, remitente, destinatario, idEntrada, position);
-                            logStatus(`  ✅ Imagen rescatada e integrada mediante canvas.`);
-                            totalExitosos++;
-                            continue;
-                        } else {
-                            throw dlErr;
-                        }
+
+                    // 1. Intentar buscar en archivos locales adjuntos si existen
+                    let matchedLocalFile = findLocalFile(fileUrl, idEntrada);
+                    if (matchedLocalFile) {
+                        logStatus(`  📁 Usando archivo local: ${matchedLocalFile.name}`);
+                        buffer = await matchedLocalFile.arrayBuffer();
+                    } else if (fileUrl) {
+                        // 2. Intentar descarga remota Web
+                        buffer = await descargarWeb(fileUrl, customProxyPrefix);
+                    } else {
+                        logStatus(`  ⚠️ Omitido: Sin URL ni archivo local.`);
+                        totalOmitidos++;
+                        continue;
                     }
 
                     if (!buffer || buffer.byteLength < 10) {
-                        throw new Error("El archivo descargado está vacío o no es accesible.");
+                        throw new Error("Contenido del archivo no válido o vacío.");
                     }
 
                     const esPDF = comprobarSiEsPDF(buffer);
-                    const urlLower = fileUrl.toLowerCase();
+                    const urlLower = (fileUrl || matchedLocalFile.name).toLowerCase();
 
                     if (esPDF) {
                         const loadedPdf = await PDFLib.PDFDocument.load(buffer, { ignoreEncryption: true });
-                        const pageIndices = loadedPdf.getPageIndices();
-                        const copiedPages = await mergedPdf.copyPages(loadedPdf, pageIndices);
-                        
-                        copiedPages.forEach(page => {
-                            stampHeader(page, remitente, destinatario, idEntrada, position);
-                            mergedPdf.addPage(page);
+                        const pages = await mergedPdf.copyPages(loadedPdf, loadedPdf.getPageIndices());
+                        pages.forEach(p => {
+                            stampHeader(p, remitente, destinatario, idEntrada, position);
+                            mergedPdf.addPage(p);
                         });
-
-                        logStatus(`  ✅ PDF procesado e integrado exitosamente (${copiedPages.length} pág).`);
+                        logStatus(`  ✅ PDF procesado (${pages.length} pág).`);
                         totalExitosos++;
 
                     } else if (urlLower.includes('.docx')) {
@@ -208,139 +211,92 @@
                         hiddenRender.innerHTML = result.value;
 
                         const canvas = await html2canvas(hiddenRender, { scale: 1.5 });
-                        const imgDataUrl = canvas.toDataURL('image/png');
-                        const imgEmbed = await mergedPdf.embedPng(imgDataUrl);
-
+                        const imgEmbed = await mergedPdf.embedPng(canvas.toDataURL('image/png'));
                         const page = mergedPdf.addPage([canvas.width, canvas.height]);
                         page.drawImage(imgEmbed, { x: 0, y: 0, width: canvas.width, height: canvas.height });
                         stampHeader(page, remitente, destinatario, idEntrada, position);
-
-                        logStatus(`  ✅ Documento Word (.docx) procesado e integrado.`);
+                        logStatus(`  ✅ Documento Word procesado.`);
                         totalExitosos++;
 
                     } else {
-                        // Tratar como imagen (PNG / JPG / WEBP)
                         const imgDataUrl = await bufferToDataUrl(buffer);
-                        let imgEmbed;
-                        if (imgDataUrl.startsWith('data:image/jpeg')) {
-                            imgEmbed = await mergedPdf.embedJpg(imgDataUrl);
-                        } else {
-                            imgEmbed = await mergedPdf.embedPng(imgDataUrl);
-                        }
+                        let imgEmbed = imgDataUrl.startsWith('data:image/jpeg') 
+                            ? await mergedPdf.embedJpg(imgDataUrl) 
+                            : await mergedPdf.embedPng(imgDataUrl);
 
                         const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
                         page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
                         stampHeader(page, remitente, destinatario, idEntrada, position);
-
-                        logStatus(`  ✅ Imagen convertida e integrada al PDF.`);
+                        logStatus(`  ✅ Imagen integrada al PDF.`);
                         totalExitosos++;
                     }
 
-                } catch (itemErr) {
-                    logStatus(`  ❌ No se pudo descargar este archivo por bloqueos del servidor.`);
-                    logStatus(`     URL del archivo: ${fileUrl}`);
+                } catch (err) {
+                    logStatus(`  ❌ Error en registro: ${err.message}`);
                     totalOmitidos++;
                 }
             }
 
-            // Resumen final
             logStatus(`\n--------------------------------------------------`);
-            logStatus(`Proceso completado. Éxitos: ${totalExitosos} | Omitidos/Bloqueados: ${totalOmitidos}`);
+            logStatus(`Finalizado. Éxitos: ${totalExitosos} | Fallidos/Omitidos: ${totalOmitidos}`);
 
             if (totalExitosos > 0) {
-                try {
-                    logStatus('Generando el archivo PDF consolidado final...');
-                    const pdfBytes = await mergedPdf.save();
-                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                    const finalUrl = URL.createObjectURL(blob);
-
-                    downloadBtn.href = finalUrl;
-                    downloadBtn.download = `Cartas_Consolidadas_${Date.now()}.pdf`;
-                    downloadSummary.innerText = `Se consolidaron exitosamente ${totalExitosos} de ${rowsData.length} cartas.`;
-
-                    statusTitle.innerText = "¡Proceso Concluido!";
-                    downloadCard.classList.remove('hidden');
-                } catch (saveErr) {
-                    logStatus(`❌ Error generando el archivo final: ${saveErr.message}`);
-                }
+                const pdfBytes = await mergedPdf.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                downloadBtn.href = URL.createObjectURL(blob);
+                downloadBtn.download = `Cartas_Consolidadas_${Date.now()}.pdf`;
+                downloadSummary.innerText = `Se consolidaron ${totalExitosos} de ${rowsData.length} registros.`;
+                statusTitle.innerText = "¡Proceso Completado!";
+                downloadCard.classList.remove('hidden');
             } else {
-                statusTitle.innerText = "Error de Acceso a las URLs";
-                alert("El servidor bloqueó el acceso a todas las URLs. Revisa la consola.");
+                statusTitle.innerText = "Error general de descargas";
+                alert("No se pudo descargar ningún archivo web. Te sugerimos subir los archivos descargados a la opción 2 (Carpeta Local).");
             }
 
             processBtn.disabled = false;
         });
 
-        function getVal(row, keys) {
-            for (let k of keys) {
-                if (row[k] !== undefined && row[k] !== null) return String(row[k]).trim();
+        function findLocalFile(url, idEntrada) {
+            if (localFilesMap.size === 0) return null;
+            let fileName = url ? url.split('/').pop().toLowerCase() : '';
+            
+            for (let [name, file] of localFilesMap.entries()) {
+                if (fileName && name.includes(fileName)) return file;
+                if (idEntrada && name.includes(String(idEntrada).toLowerCase())) return file;
             }
-            return '';
+            return null;
         }
 
-        function comprobarSiEsPDF(buffer) {
-            if (!buffer || buffer.byteLength < 5) return false;
-            const uint8 = new Uint8Array(buffer.slice(0, 5));
-            return uint8[0] === 0x25 && uint8[1] === 0x50 && uint8[2] === 0x44 && uint8[3] === 0x46; // %PDF
-        }
-
-        // Descarga robusta multicanal con 6 proxies de respaldo
-        async function descargarConFallbacks(urlOriginal) {
-            const proxies = [
-                `https://corsproxy.io/?${encodeURIComponent(urlOriginal)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOriginal)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlOriginal)}`,
-                `https://thingproxy.freeboard.io/fetch/${urlOriginal}`,
-                `https://proxy.cors.sh/${urlOriginal}`,
-                urlOriginal
+        async function descargarWeb(url, proxyPrefix) {
+            const endpoints = [
+                proxyPrefix + encodeURIComponent(url),
+                "https://corsproxy.io/?" + encodeURIComponent(url),
+                "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url)
             ];
 
-            for (let targetUrl of proxies) {
+            for (let ep of endpoints) {
                 try {
-                    const res = await fetch(targetUrl);
+                    const res = await fetch(ep);
                     if (res.ok) {
                         const buf = await res.arrayBuffer();
-                        if (buf.byteLength > 100 && !esRespuestaHTML(buf)) {
-                            return buf;
-                        }
+                        if (buf.byteLength > 100 && !esHTML(buf)) return buf;
                     }
-                } catch (e) {
-                    // Intenta con el siguiente proxy si el actual falla
-                }
+                } catch (e) {}
             }
-            throw new Error("Servidor bloqueado por Anti-Bot/CORS.");
+            throw new Error("El servidor bloqueó la descarga remota. Sube el archivo en la casilla 'Archivos locales'.");
         }
 
-        function esRespuestaHTML(buffer) {
-            if (!buffer || buffer.byteLength < 20) return true;
-            const arr = new Uint8Array(buffer.slice(0, 20));
+        function esHTML(buf) {
+            const arr = new Uint8Array(buf.slice(0, 20));
             let str = "";
-            for (let i = 0; i < arr.length; i++) {
-                str += String.fromCharCode(arr[i]);
-            }
-            str = str.toLowerCase();
-            return str.includes('<html') || str.includes('<!doctype') || str.includes('<head');
+            for (let i = 0; i < arr.length; i++) str += String.fromCharCode(arr[i]);
+            return str.toLowerCase().includes('<html') || str.toLowerCase().includes('<!doctype');
         }
 
-        function intentarCargaCanvasImagen(url) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous";
-                img.onload = () => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        resolve(canvas.toDataURL('image/png'));
-                    } catch (e) {
-                        resolve(null);
-                    }
-                };
-                img.onerror = () => resolve(null);
-                img.src = url + "?v=" + Date.now();
-            });
+        function comprobarSiEsPDF(buf) {
+            if (!buf || buf.byteLength < 5) return false;
+            const u = new Uint8Array(buf.slice(0, 5));
+            return u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46;
         }
 
         function bufferToDataUrl(buffer) {
@@ -348,9 +304,16 @@
                 const blob = new Blob([buffer]);
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error("Error procesando imagen."));
+                reader.onerror = () => reject(new Error("Error leyendo binario."));
                 reader.readAsDataURL(blob);
             });
+        }
+
+        function getVal(row, keys) {
+            for (let k of keys) {
+                if (row[k] !== undefined && row[k] !== null) return String(row[k]).trim();
+            }
+            return '';
         }
 
         function stampHeader(page, remitente, destinatario, idEntrada, position) {
