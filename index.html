@@ -10,26 +10,26 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- pdf-lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <!-- Mammoth (para DOCX) -->
+    <!-- Mammoth (DOCX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <!-- html2canvas (para renderizar DOCX a imagen) -->
+    <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
 
     <div class="max-w-4xl mx-auto py-10 px-4">
         <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
-            <h1 class="text-2xl font-bold text-indigo-700 mb-2">Unificador de Cartas (Soporta PDF, DOCX, JPG, PNG)</h1>
+            <h1 class="text-2xl font-bold text-indigo-700 mb-2">Unificador de Cartas</h1>
             <p class="text-slate-600 text-sm">
-                Procesador 100% en navegador para GitHub Pages.
+                Soporta enlaces de Google Sheets o archivos locales Excel/CSV.
             </p>
         </div>
 
         <!-- Formulario -->
         <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200 space-y-4">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Opción A: URL de Google Sheets / CSV Online:</label>
-                <input type="url" id="csvUrl" placeholder="https://docs.google.com/.../pub?output=csv" class="w-full text-sm border-slate-300 rounded-lg p-2.5 border" />
+                <label class="block text-sm font-medium text-slate-700 mb-1">Opción A: Enlace de Google Sheets (Compartido o Publicado):</label>
+                <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/1R1M.../edit?usp=sharing" class="w-full text-sm border-slate-300 rounded-lg p-2.5 border" />
             </div>
 
             <div class="text-center font-bold text-slate-400 text-xs">--- O ---</div>
@@ -43,15 +43,15 @@
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1">Posición del Sello:</label>
                     <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                        <option value="bottom-right">Esquina Inferior Derecha</option>
                         <option value="top-right">Esquina Superior Derecha</option>
                         <option value="top-left">Esquina Superior Izquierda</option>
-                        <option value="bottom-right">Esquina Inferior Derecha</option>
                         <option value="bottom-left">Esquina Inferior Izquierda</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1">Timeout por Archivo (Segundos):</label>
-                    <input type="number" id="timeoutSec" value="4" min="1" max="10" class="w-full text-sm border-slate-300 rounded-lg p-2 border" />
+                    <input type="number" id="timeoutSec" value="5" min="1" max="15" class="w-full text-sm border-slate-300 rounded-lg p-2 border" />
                 </div>
             </div>
 
@@ -79,7 +79,6 @@
         </div>
     </div>
 
-    <!-- Contenedor oculto para renderizar Word -->
     <div id="wordRenderBox" style="position: absolute; left: -9999px; top: -9999px; width: 750px; background: white; padding: 20px;"></div>
 
     <script>
@@ -97,18 +96,23 @@
 
         processBtn.addEventListener('click', async () => {
             let rowsData = [];
-            const onlineUrl = csvUrlInput.value.trim();
+            const rawUrl = csvUrlInput.value.trim();
             const localFile = dataFileInput.files[0];
 
-            if (onlineUrl) {
-                logStatus("Obteniendo datos de la URL online...");
+            statusCard.classList.remove('hidden');
+            downloadCard.classList.add('hidden');
+            statusText.innerText = "";
+
+            if (rawUrl) {
+                logStatus("Transformando enlace de Google Sheets a CSV...");
+                const csvExportUrl = transformarUrlGoogleSheets(rawUrl);
+                
                 try {
-                    const res = await fetch(onlineUrl);
-                    const text = await res.text();
-                    const workbook = XLSX.read(text, { type: 'string' });
+                    const csvText = await descargarTextoConProxy(csvExportUrl);
+                    const workbook = XLSX.read(csvText, { type: 'string' });
                     rowsData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
                 } catch (e) {
-                    alert("Error al descargar el CSV online: " + e.message);
+                    alert("Error descargando el Google Sheet: " + e.message + "\nAsegúrate de que la hoja tenga permisos de 'Cualquier persona con el enlace puede ver'.");
                     return;
                 }
             } else if (localFile) {
@@ -117,16 +121,16 @@
                     const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
                     rowsData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
                 } catch (e) {
-                    alert("Error al leer el archivo local: " + e.message);
+                    alert("Error leyendo el archivo local: " + e.message);
                     return;
                 }
             } else {
-                alert("Por favor ingresa una URL de CSV o sube un archivo Excel.");
+                alert("Ingresa un enlace de Google Sheets o selecciona un archivo local.");
                 return;
             }
 
             if (rowsData.length === 0) {
-                alert("No se encontraron registros para procesar.");
+                alert("No se obtuvieron registros de la hoja.");
                 return;
             }
 
@@ -136,9 +140,7 @@
             const timeoutSeconds = parseInt(document.getElementById('timeoutSec').value) * 1000;
 
             processBtn.disabled = true;
-            statusCard.classList.remove('hidden');
-            downloadCard.classList.add('hidden');
-            statusText.innerText = `Registros cargados: ${rowsData.length}. Iniciando procesador...\n`;
+            logStatus(`Se leyeron ${rowsData.length} filas correctamente. Iniciando descarga de cartas...\n`);
 
             let exitosos = 0;
             let omitidos = 0;
@@ -147,53 +149,49 @@
                 const row = rowsData[i];
                 progressBar.style.width = `${Math.round(((i + 1) / rowsData.length) * 100)}%`;
 
-                const remNom = getVal(row, ['REMITENTE Nombre', 'REMITENTE NOMBRE', 'Remitente Nombre']);
-                const remApe = getVal(row, ['REMITENTE Apellidos', 'REMITENTE APELLIDOS', 'Remitente Apellidos']);
-                const destNom = getVal(row, ['DESTINATARIO Nombre', 'DESTINATARIO NOMBRE', 'Destinatario Nombre']);
-                const destApe = getVal(row, ['DESTINATARIO Apellidos', 'DESTINATARIO APELLIDOS', 'Destinatario Apellidos']);
-                const idEntrada = getVal(row, ['ID de entrada', 'ID DE ENTRADA', 'ID', 'ID_ENTRADA']) || 'N/A';
-                const fileUrl = getVal(row, ['carta', 'CARTA', 'Carta', 'URL', 'url']);
+                const remNom = getValFlexible(row, ['remitentenombre', 'remitente_nombre', 'nombre_remitente']);
+                const remApe = getValFlexible(row, ['remitenteapellidos', 'remitente_apellidos', 'apellidos_remitente']);
+                const destNom = getValFlexible(row, ['destinatarionombre', 'destinatario_nombre', 'nombre_destinatario']);
+                const destApe = getValFlexible(row, ['destinatarioapellidos', 'destinatario_apellidos', 'apellidos_destinatario']);
+                const idEntrada = getValFlexible(row, ['identrada', 'id_de_entrada', 'id', 'id_entrada']) || 'N/A';
+                const fileUrl = getValFlexible(row, ['carta', 'url', 'enlace', 'adjunto', 'cartas']);
 
                 const remitente = `${remNom} ${remApe}`.trim() || 'No especificado';
                 const destinatario = `${destNom} ${destApe}`.trim() || 'No especificado';
 
-                logStatus(`\n[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
+                logStatus(`[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
 
-                // Pausa para liberar la interfaz gráfica
-                await new Promise(r => setTimeout(r, 50));
+                await new Promise(r => setTimeout(r, 40));
 
                 if (!fileUrl || !fileUrl.startsWith('http')) {
-                    logStatus(`  ⚠️ Omitido: Sin URL válida.`);
+                    logStatus(`  ⚠️ Omitido: URL vacía o inválida ("${fileUrl}")`);
                     omitidos++;
                     continue;
                 }
 
                 try {
-                    const buffer = await descargarConTimeout(fileUrl, timeoutSeconds);
+                    const buffer = await descargarBinarioConProxy(fileUrl, timeoutSeconds);
                     if (!buffer || buffer.byteLength < 50) {
-                        throw new Error("Respuesta vacía o bloqueada por CORS.");
+                        throw new Error("Respuesta vacía del servidor.");
                     }
 
                     const tipo = detectarTipoArchivo(buffer, fileUrl);
 
                     if (tipo === 'pdf') {
-                        // 1. PROCESAR PDF
                         const loadedPdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
                         const pages = await mergedPdf.copyPages(loadedPdf, loadedPdf.getPageIndices());
                         pages.forEach(p => {
                             stampHeader(p, remitente, destinatario, idEntrada, position, rgb);
                             mergedPdf.addPage(p);
                         });
-                        logStatus(`  ✅ Documento PDF integrado (${pages.length} pág).`);
+                        logStatus(`  ✅ PDF procesado (${pages.length} pág).`);
                         exitosos++;
 
                     } else if (tipo === 'docx') {
-                        // 2. PROCESAR WORD (.DOCX)
                         wordRenderBox.innerHTML = '';
                         const parsed = await mammoth.convertToHtml({ arrayBuffer: buffer });
                         wordRenderBox.innerHTML = parsed.value;
 
-                        // Breve espera para renderizado
                         await new Promise(r => setTimeout(r, 100));
 
                         const canvas = await html2canvas(wordRenderBox, { scale: 1.2, logging: false });
@@ -205,53 +203,78 @@
                         stampHeader(page, remitente, destinatario, idEntrada, position, rgb);
 
                         wordRenderBox.innerHTML = '';
-                        logStatus(`  ✅ Documento Word (.docx) renderizado e integrado.`);
+                        logStatus(`  ✅ Documento Word (.docx) integrado.`);
                         exitosos++;
 
                     } else {
-                        // 3. PROCESAR IMAGEN (JPG / JPEG / PNG)
                         const imgDataUrl = await bufferToDataUrl(buffer);
-                        let imgEmbed;
-
-                        if (imgDataUrl.startsWith('data:image/jpeg') || imgDataUrl.startsWith('data:image/jpg')) {
-                            imgEmbed = await mergedPdf.embedJpg(imgDataUrl);
-                        } else {
-                            imgEmbed = await mergedPdf.embedPng(imgDataUrl);
-                        }
+                        let imgEmbed = (imgDataUrl.startsWith('data:image/jpeg') || imgDataUrl.startsWith('data:image/jpg'))
+                            ? await mergedPdf.embedJpg(imgDataUrl)
+                            : await mergedPdf.embedPng(imgDataUrl);
 
                         const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
                         page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
                         stampHeader(page, remitente, destinatario, idEntrada, position, rgb);
-                        logStatus(`  ✅ Imagen (JPG/PNG) integrada.`);
+                        logStatus(`  ✅ Imagen integrada.`);
                         exitosos++;
                     }
 
                 } catch (err) {
-                    logStatus(`  ❌ Omitido por error: ${err.message}`);
+                    logStatus(`  ❌ Error descargando carta: ${err.message}`);
                     omitidos++;
                 }
             }
 
             logStatus(`\n==========================================`);
-            logStatus(`Proceso completado. Éxitos: ${exitosos} | Omitidos: ${omitidos}`);
+            logStatus(`Finalizado. Éxitos: ${exitosos} | Omitidos: ${omitidos}`);
 
             if (exitosos > 0) {
                 const pdfBytes = await mergedPdf.save();
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });
                 downloadBtn.href = URL.createObjectURL(blob);
                 downloadBtn.download = `Cartas_Consolidadas.pdf`;
-                downloadSummary.innerText = `Se unieron ${exitosos} cartas correctamente.`;
+                downloadSummary.innerText = `Se unieron ${exitosos} registros correctamente.`;
                 statusTitle.innerText = "¡Proceso Completado!";
                 downloadCard.classList.remove('hidden');
             } else {
-                statusTitle.innerText = "Sin registros procesados";
-                alert("No se pudo descargar ningún archivo de las URLs. Revisa los permisos de acceso de los enlaces.");
+                statusTitle.innerText = "Proceso Finalizado Sin Archivos";
+                alert("No se pudo procesar ninguna carta. Revisa que las URLs de las cartas sean de acceso público.");
             }
 
             processBtn.disabled = false;
         });
 
-        async function descargarConTimeout(url, timeoutMs) {
+        function transformarUrlGoogleSheets(url) {
+            if (url.includes('docs.google.com/spreadsheets')) {
+                const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (match && match[1]) {
+                    return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+                }
+            }
+            return url;
+        }
+
+        async function descargarTextoConProxy(url) {
+            const proxies = [
+                "https://api.allorigins.win/raw?url=",
+                "https://corsproxy.io/?"
+            ];
+
+            for (let proxy of proxies) {
+                try {
+                    const res = await fetch(proxy + encodeURIComponent(url));
+                    if (res.ok) {
+                        const text = await res.text();
+                        if (!text.includes('<!DOCTYPE html>') && text.length > 20) {
+                            return text;
+                        }
+                    }
+                } catch (e) {}
+            }
+            throw new Error("No se pudo obtener el CSV público de Google Sheets. Asegúrate de compartir el archivo en Google Drive.");
+        }
+
+        async function descargarBinarioConProxy(url, timeoutMs) {
             const proxies = [
                 "https://api.allorigins.win/raw?url=",
                 "https://corsproxy.io/?"
@@ -270,22 +293,13 @@
                     clearTimeout(timer);
                 }
             }
-            throw new Error("Timeout de descarga o bloqueo CORS.");
+            throw new Error("Tiempo de espera agotado o acceso denegado a la URL del archivo.");
         }
 
         function detectarTipoArchivo(buf, url) {
             const u = new Uint8Array(buf.slice(0, 4));
-            // %PDF
-            if (u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) {
-                return 'pdf';
-            }
-            // PK (Cabecera ZIP usada por .docx)
-            if (u[0] === 0x50 && u[1] === 0x4B) {
-                return 'docx';
-            }
-            if (url.toLowerCase().includes('.docx')) {
-                return 'docx';
-            }
+            if (u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) return 'pdf';
+            if (u[0] === 0x50 && u[1] === 0x4B || url.toLowerCase().includes('.docx')) return 'docx';
             return 'imagen';
         }
 
@@ -298,9 +312,14 @@
             });
         }
 
-        function getVal(row, keys) {
-            for (let k of keys) {
-                if (row[k] !== undefined && row[k] !== null) return String(row[k]).trim();
+        function getValFlexible(row, targetKeys) {
+            for (let key in row) {
+                const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+                for (let target of targetKeys) {
+                    if (cleanKey === target || cleanKey.includes(target)) {
+                        return String(row[key]).trim();
+                    }
+                }
             }
             return '';
         }
