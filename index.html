@@ -1,300 +1,42 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consolidador Definitivo - Igleco</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-</head>
-<body class="bg-slate-100 min-h-screen text-slate-800 p-6">
+async function descargarConMultiproxy(url, ms) {
+    // 1. Intento directo
+    try {
+        const c1 = new AbortController();
+        const t1 = setTimeout(() => c1.abort(), 3000);
+        const r1 = await fetch(url, { signal: c1.signal });
+        clearTimeout(t1);
+        if (r1.ok) return await r1.arrayBuffer();
+    } catch (e) {}
 
-    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6 border border-slate-200">
-        <h1 class="text-xl font-bold text-indigo-700 mb-1">Unificador Ultra-Resistente CORS</h1>
-        <p class="text-xs text-slate-500 mb-4">Especialmente ajustado para descargas de Gravity Forms / igleco.com</p>
-
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-semibold mb-1">1. Seleccionar Excel (.xlsx) o CSV:</label>
-                <input type="file" id="dataFile" accept=".csv, .xlsx, .xls" class="w-full text-sm border p-2 rounded cursor-pointer bg-slate-50"/>
-            </div>
-
-            <div class="text-center font-bold text-slate-400 text-xs">--- O ---</div>
-
-            <div>
-                <label class="block text-sm font-semibold mb-1">2. Enlace de Google Sheets:</label>
-                <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full text-sm border p-2 rounded" />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold mb-1">Posición Sello:</label>
-                    <select id="labelPosition" class="w-full text-sm border p-2 rounded">
-                        <option value="bottom-right">Esquina Inferior Derecha</option>
-                        <option value="top-right">Esquina Superior Derecha</option>
-                        <option value="bottom-left">Esquina Inferior Izquierda</option>
-                        <option value="top-left">Esquina Superior Izquierda</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold mb-1">Tiempo Límite por Archivo:</label>
-                    <select id="timeoutSec" class="w-full text-sm border p-2 rounded">
-                        <option value="12000" selected>12 Segundos (Recomendado)</option>
-                        <option value="20000">20 Segundos</option>
-                    </select>
-                </div>
-            </div>
-
-            <button id="processBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded transition">
-                Iniciar Procesamiento
-            </button>
-        </div>
-
-        <div id="statusCard" class="hidden mt-6">
-            <div class="w-full bg-slate-200 rounded-full h-2 mb-3">
-                <div id="progressBar" class="bg-indigo-600 h-2 rounded-full w-0 transition-all"></div>
-            </div>
-            <div id="statusText" class="text-xs font-mono bg-slate-900 text-green-400 p-3 rounded h-64 overflow-y-auto whitespace-pre-wrap"></div>
-        </div>
-
-        <div id="downloadCard" class="hidden mt-6 p-4 bg-emerald-100 border border-emerald-300 rounded text-center">
-            <p id="downloadSummary" class="text-emerald-800 font-bold mb-2"></p>
-            <a id="downloadBtn" class="inline-block py-2 px-6 bg-emerald-600 text-white font-bold rounded hover:bg-emerald-700 cursor-pointer">
-                Descargar PDF Consolidado
-            </a>
-        </div>
-    </div>
-
-    <script>
-        const processBtn = document.getElementById('processBtn');
-        const csvUrlInput = document.getElementById('csvUrl');
-        const dataFileInput = document.getElementById('dataFile');
-        const statusCard = document.getElementById('statusCard');
-        const progressBar = document.getElementById('progressBar');
-        const statusText = document.getElementById('statusText');
-        const downloadCard = document.getElementById('downloadCard');
-        const downloadBtn = document.getElementById('downloadBtn');
-
-        processBtn.addEventListener('click', async () => {
-            let rowsData = [];
-            statusCard.classList.remove('hidden');
-            downloadCard.classList.add('hidden');
-            statusText.innerText = "";
-            processBtn.disabled = true;
-
-            try {
-                if (dataFileInput.files[0]) {
-                    log("Leyendo archivo local...");
-                    const data = await dataFileInput.files[0].arrayBuffer();
-                    const wb = XLSX.read(new Uint8Array(data), { type: 'array' });
-                    rowsData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
-                } else if (csvUrlInput.value.trim()) {
-                    log("Obteniendo datos de Google Sheets...");
-                    const csvText = await descargarTextoConTimeout(obtenerUrlExportacion(csvUrlInput.value.trim()), 10000);
-                    const wb = XLSX.read(csvText, { type: 'string' });
-                    rowsData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
-                } else {
-                    alert("Selecciona un archivo Excel local o pega un enlace.");
-                    resetUI();
-                    return;
+    // 2. Proxy de codificación Base64 via JSON (Bypassea el bloqueo de PDFs de WordPress)
+    try {
+        const c2 = new AbortController();
+        const t2 = setTimeout(() => c2.abort(), ms);
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: c2.signal });
+        clearTimeout(t2);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.contents) {
+                // Convertir Data URL o texto a ArrayBuffer
+                const base64Data = data.contents.split(',')[1] || data.contents;
+                const binaryString = atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
                 }
-            } catch (e) {
-                log(`❌ Error al cargar la lista: ${e.message}`);
-                resetUI();
-                return;
+                return bytes.buffer;
             }
-
-            if (!rowsData.length) {
-                log("❌ La tabla no contiene registros.");
-                resetUI();
-                return;
-            }
-
-            const { PDFDocument, rgb } = PDFLib;
-            const mergedPdf = await PDFDocument.create();
-            const position = document.getElementById('labelPosition').value;
-            const timeoutMs = parseInt(document.getElementById('timeoutSec').value);
-
-            log(`✅ Tabla cargada. Se encontraron ${rowsData.length} registros.\nIniciando descarga y unión de cartas...\n`);
-
-            let okCount = 0;
-            for (let i = 0; i < rowsData.length; i++) {
-                const row = rowsData[i];
-                progressBar.style.width = `${Math.round(((i + 1) / rowsData.length) * 100)}%`;
-
-                const rem = getVal(row, ['remitente', 'nombre_remitente']);
-                const dest = getVal(row, ['destinatario', 'nombre_destinatario']);
-                const id = getVal(row, ['id', 'identrada', 'id_entrada']) || (i + 1);
-                let link = getVal(row, ['carta', 'url', 'enlace', 'link']);
-
-                log(`[${i + 1}/${rowsData.length}] ID: ${id} | ${rem || 'N/A'} -> ${dest || 'N/A'}`);
-                await new Promise(r => requestAnimationFrame(r));
-
-                if (!link || !link.startsWith('http')) {
-                    log(`  ⚠️ Enlace vacío o no válido.`);
-                    continue;
-                }
-
-                link = limpiarUrl(link);
-
-                try {
-                    const buffer = await descargarConMultiproxy(link, timeoutMs);
-                    const tipo = detectarTipo(buffer);
-
-                    if (tipo === 'pdf') {
-                        const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
-                        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                        pages.forEach(p => {
-                            estampillar(p, rem, dest, id, position, rgb);
-                            mergedPdf.addPage(p);
-                        });
-                        log(`  ✅ PDF integrado (${pages.length} pág)`);
-                        okCount++;
-                    } else if (tipo === 'img') {
-                        let img;
-                        try {
-                            img = await mergedPdf.embedJpg(buffer);
-                        } catch (e) {
-                            img = await mergedPdf.embedPng(buffer);
-                        }
-                        const p = mergedPdf.addPage([img.width, img.height]);
-                        p.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
-                        estampillar(p, rem, dest, id, position, rgb);
-                        log(`  ✅ Imagen (JPG/PNG) integrada.`);
-                        okCount++;
-                    } else if (tipo === 'docx') {
-                        const res = await mammoth.extractRawText({ arrayBuffer: buffer });
-                        const p = mergedPdf.addPage([595, 842]);
-                        let y = 800;
-                        res.value.split('\n').slice(0, 45).forEach(line => {
-                            if (y > 50 && line.trim()) {
-                                p.drawText(line.substring(0, 85), { x: 40, y, size: 9, color: rgb(0.1, 0.1, 0.1) });
-                                y -= 14;
-                            }
-                        });
-                        estampillar(p, rem, dest, id, position, rgb);
-                        log(`  ✅ Documento Word (.docx) integrado.`);
-                        okCount++;
-                    }
-                } catch (err) {
-                    log(`  ❌ Error descargando carta: ${err.message}`);
-                }
-            }
-
-            log(`\n==========================================`);
-            log(`Proceso finalizado. Total unidos: ${okCount} de ${rowsData.length}`);
-
-            if (okCount > 0) {
-                const pdfBytes = await mergedPdf.save();
-                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                downloadBtn.href = URL.createObjectURL(blob);
-                downloadBtn.download = "Cartas_Consolidadas.pdf";
-                document.getElementById('downloadSummary').innerText = `¡Éxito! Se unieron ${okCount} documentos correctamente.`;
-                downloadCard.classList.remove('hidden');
-            }
-            resetUI();
-        });
-
-        function limpiarUrl(url) {
-            // Reemplaza espacios codificados o raros en las URLs de WordPress
-            return url.trim().replace(/ /g, '%20');
         }
+    } catch (e) {}
 
-        function obtenerUrlExportacion(url) {
-            const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-            if (!m) throw new Error("URL de Google Sheets no válida");
-            const gid = (url.match(/[?&]gid=([0-9]+)/) || [])[1] || "0";
-            return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`;
-        }
+    // 3. Fallback alternativo
+    try {
+        const c3 = new AbortController();
+        const t3 = setTimeout(() => c3.abort(), ms);
+        const r3 = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: c3.signal });
+        clearTimeout(t3);
+        if (r3.ok) return await r3.arrayBuffer();
+    } catch (e) {}
 
-        async function descargarTextoConTimeout(url, ms) {
-            const controller = new AbortController();
-            const t = setTimeout(() => controller.abort(), ms);
-            const res = await fetch(url, { signal: controller.signal });
-            clearTimeout(t);
-            return await res.text();
-        }
-
-        // MOTOR MULTI-PROXY DE 4 NIVELES
-        async function descargarConMultiproxy(url, ms) {
-            // Intentar Nivel 1: Directo
-            try {
-                const c1 = new AbortController();
-                const t1 = setTimeout(() => c1.abort(), ms / 2);
-                const r1 = await fetch(url, { signal: c1.signal });
-                clearTimeout(t1);
-                if (r1.ok) return await r1.arrayBuffer();
-            } catch (e) {}
-
-            // Intentar Nivel 2: Proxy API AllOrigins RAW
-            try {
-                const c2 = new AbortController();
-                const t2 = setTimeout(() => c2.abort(), ms);
-                const r2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: c2.signal });
-                clearTimeout(t2);
-                if (r2.ok) return await r2.arrayBuffer();
-            } catch (e) {}
-
-            // Intentar Nivel 3: Proxy CorsProxy.io
-            try {
-                const c3 = new AbortController();
-                const t3 = setTimeout(() => c3.abort(), ms);
-                const r3 = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: c3.signal });
-                clearTimeout(t3);
-                if (r3.ok) return await r3.arrayBuffer();
-            } catch (e) {}
-
-            // Intentar Nivel 4: Proxy ThingProxy
-            try {
-                const c4 = new AbortController();
-                const t4 = setTimeout(() => c4.abort(), ms);
-                const r4 = await fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: c4.signal });
-                clearTimeout(t4);
-                if (r4.ok) return await r4.arrayBuffer();
-            } catch (e) {}
-
-            throw new Error("Servidor bloqueó el archivo. Abre la app desactivando seguridad CORS en Chrome o descarga los archivos localmente.");
-        }
-
-        function detectarTipo(buf) {
-            const u = new Uint8Array(buf.slice(0, 4));
-            if (u[0] === 0x25 && u[1] === 0x50) return 'pdf'; // %PDF
-            if (u[0] === 0x50 && u[1] === 0x4B) return 'docx'; // PK..
-            return 'img';
-        }
-
-        function getVal(row, keys) {
-            for (let k in row) {
-                let clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (keys.some(key => clean.includes(key))) return String(row[k]).trim();
-            }
-            return '';
-        }
-
-        function estampillar(page, rem, dest, id, pos, rgb) {
-            const { width, height } = page.getSize();
-            let x = pos.includes('right') ? Math.max(20, width - 210) : 20;
-            let y = pos.includes('bottom') ? 40 : height - 20;
-
-            page.drawRectangle({
-                x: x - 4, y: y - 24, width: 200, height: 32,
-                color: rgb(1, 1, 1), borderColor: rgb(0.6, 0.6, 0.6), borderWidth: 1
-            });
-            page.drawText(`ID: ${id}`, { x, y, size: 8, color: rgb(0, 0, 0) });
-            page.drawText(`De: ${(rem || 'N/A').substring(0, 30)}`, { x, y: y - 10, size: 8, color: rgb(0.2, 0.2, 0.2) });
-            page.drawText(`Para: ${(dest || 'N/A').substring(0, 30)}`, { x, y: y - 20, size: 8, color: rgb(0.2, 0.2, 0.2) });
-        }
-
-        function log(msg) {
-            statusText.innerText += msg + '\n';
-            statusText.scrollTop = statusText.scrollHeight;
-        }
-
-        function resetUI() {
-            processBtn.disabled = false;
-        }
-    </script>
-</body>
-</html>
+    throw new Error("El servidor de origen bloquea la descarga automática del PDF.");
+}
