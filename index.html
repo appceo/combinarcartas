@@ -3,86 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consolidador de Cartas - Ultra Rápido</title>
-    <!-- Tailwind CSS -->
+    <title>Consolidador Definitive - Igleco</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- pdf-lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <!-- Mammoth (docx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+<body class="bg-slate-100 min-h-screen text-slate-800 p-6">
 
-    <div class="max-w-4xl mx-auto py-10 px-4">
-        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
-            <h1 class="text-2xl font-bold text-indigo-700 mb-1">Consolidador de Cartas Ultra-Rápido</h1>
-            <p class="text-slate-600 text-sm">
-                Optimizado para procesar PDFs, DOCX e Imágenes sin congelar la pantalla.
-            </p>
-        </div>
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6 border border-slate-200">
+        <h1 class="text-xl font-bold text-indigo-700 mb-1">Unificador de Cartas v5.0</h1>
+        <p class="text-xs text-slate-500 mb-4">Soporta URLs directas de WordPress / Gravity Forms y Google Drive.</p>
 
-        <!-- Formulario -->
-        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200 space-y-4">
+        <div class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Opción A: Enlace de Google Sheets:</label>
-                <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/1R1M.../edit" class="w-full text-sm border-slate-300 rounded-lg p-2.5 border" />
+                <label class="block text-sm font-semibold mb-1">1. Archivo Excel (.xlsx) o CSV Local:</label>
+                <input type="file" id="dataFile" accept=".csv, .xlsx, .xls" class="w-full text-sm border p-2 rounded cursor-pointer bg-slate-50"/>
             </div>
 
             <div class="text-center font-bold text-slate-400 text-xs">--- O ---</div>
 
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Opción B: Archivo Excel o CSV Local (Recomendado):</label>
-                <input type="file" id="dataFile" accept=".csv, .xlsx, .xls" class="block w-full text-sm text-slate-500 border border-slate-300 rounded-lg cursor-pointer file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                <label class="block text-sm font-semibold mb-1">2. Google Sheets URL:</label>
+                <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full text-sm border p-2 rounded" />
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Posición del Sello:</label>
-                    <select id="labelPosition" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
+                    <label class="block text-xs font-semibold mb-1">Posición Sello:</label>
+                    <select id="labelPosition" class="w-full text-sm border p-2 rounded">
                         <option value="bottom-right">Esquina Inferior Derecha</option>
                         <option value="top-right">Esquina Superior Derecha</option>
-                        <option value="top-left">Esquina Superior Izquierda</option>
                         <option value="bottom-left">Esquina Inferior Izquierda</option>
+                        <option value="top-left">Esquina Superior Izquierda</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Límite de Espera por Archivo:</label>
-                    <select id="timeoutSec" class="w-full text-sm border-slate-300 rounded-lg p-2 border">
-                        <option value="4000">4 Segundos (Rápido)</option>
-                        <option value="8000" selected>8 Segundos (Estándar)</option>
-                        <option value="15000">15 Segundos (Conexiones Lentas)</option>
+                    <label class="block text-xs font-semibold mb-1">Tiempo Límite por Carta:</label>
+                    <select id="timeoutSec" class="w-full text-sm border p-2 rounded">
+                        <option value="8000" selected>8 Segundos</option>
+                        <option value="15000">15 Segundos</option>
                     </select>
                 </div>
             </div>
 
-            <button id="processBtn" class="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow transition duration-200 mt-4">
-                Iniciar Procesamiento Rápido
+            <button id="processBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded transition">
+                Iniciar Procesamiento
             </button>
         </div>
 
-        <!-- Consola y Progreso -->
-        <div id="statusCard" class="hidden bg-white rounded-xl shadow-md p-6 mb-8 border border-slate-200">
-            <h2 class="text-lg font-semibold text-slate-700 mb-3" id="statusTitle">Procesando...</h2>
-            <div class="w-full bg-slate-200 rounded-full h-3 mb-4 overflow-hidden">
-                <div id="progressBar" class="bg-indigo-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+        <div id="statusCard" class="hidden mt-6">
+            <div class="w-full bg-slate-200 rounded-full h-2 mb-3">
+                <div id="progressBar" class="bg-indigo-600 h-2 rounded-full w-0 transition-all"></div>
             </div>
-            <div id="statusText" class="text-xs font-mono bg-slate-900 text-green-400 p-4 rounded-lg h-64 overflow-y-auto leading-relaxed whitespace-pre-wrap"></div>
+            <div id="statusText" class="text-xs font-mono bg-slate-900 text-green-400 p-3 rounded h-64 overflow-y-auto whitespace-pre-wrap"></div>
         </div>
 
-        <!-- Descarga -->
-        <div id="downloadCard" class="hidden bg-emerald-50 rounded-xl shadow-md p-6 border border-emerald-200 text-center">
-            <h2 class="text-xl font-bold text-emerald-800 mb-2">¡Proceso Finalizado!</h2>
-            <p id="downloadSummary" class="text-emerald-700 text-sm mb-4"></p>
-            <a id="downloadBtn" class="inline-flex items-center gap-2 py-3 px-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-lg transition duration-200 cursor-pointer">
+        <div id="downloadCard" class="hidden mt-6 p-4 bg-emerald-100 border border-emerald-300 rounded text-center">
+            <p id="downloadSummary" class="text-emerald-800 font-bold mb-2"></p>
+            <a id="downloadBtn" class="inline-block py-2 px-6 bg-emerald-600 text-white font-bold rounded hover:bg-emerald-700 cursor-pointer">
                 Descargar PDF Consolidado
             </a>
         </div>
     </div>
-
-    <!-- Contenedor oculto para renderizado -->
-    <div id="tempDocxContainer" class="hidden"></div>
 
     <script>
         const processBtn = document.getElementById('processBtn');
@@ -91,269 +74,219 @@
         const statusCard = document.getElementById('statusCard');
         const progressBar = document.getElementById('progressBar');
         const statusText = document.getElementById('statusText');
-        const statusTitle = document.getElementById('statusTitle');
         const downloadCard = document.getElementById('downloadCard');
         const downloadBtn = document.getElementById('downloadBtn');
-        const downloadSummary = document.getElementById('downloadSummary');
 
         processBtn.addEventListener('click', async () => {
             let rowsData = [];
-            const rawUrl = csvUrlInput.value.trim();
-            const localFile = dataFileInput.files[0];
-
             statusCard.classList.remove('hidden');
             downloadCard.classList.add('hidden');
             statusText.innerText = "";
             processBtn.disabled = true;
 
             try {
-                if (localFile) {
-                    logStatus("Cargando tabla local...");
-                    const data = await localFile.arrayBuffer();
-                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
-                    rowsData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-                } else if (rawUrl) {
-                    logStatus("Descargando tabla de Google Sheets...");
-                    const csvText = await descargarTablaGoogle(rawUrl);
-                    const workbook = XLSX.read(csvText, { type: 'string' });
-                    rowsData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                if (dataFileInput.files[0]) {
+                    log("Leyendo archivo local...");
+                    const data = await dataFileInput.files[0].arrayBuffer();
+                    const wb = XLSX.read(new Uint8Array(data), { type: 'array' });
+                    rowsData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+                } else if (csvUrlInput.value.trim()) {
+                    log("Obteniendo datos de Google Sheets...");
+                    const csvText = await descargarTextoConTimeout(obtenerUrlExportacion(csvUrlInput.value.trim()), 8000);
+                    const wb = XLSX.read(csvText, { type: 'string' });
+                    rowsData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
                 } else {
-                    alert("Por favor sube un archivo Excel local o ingresa una URL de Google Sheets.");
-                    processBtn.disabled = false;
-                    statusCard.classList.add('hidden');
+                    alert("Selecciona un archivo Excel local o pega un enlace.");
+                    resetUI();
                     return;
                 }
             } catch (e) {
-                alert("Error leyendo los datos: " + e.message);
-                processBtn.disabled = false;
-                statusCard.classList.add('hidden');
+                log(`❌ Error al cargar la lista: ${e.message}`);
+                resetUI();
                 return;
             }
 
-            if (!rowsData || rowsData.length === 0) {
-                alert("La tabla seleccionada no contiene registros.");
-                processBtn.disabled = false;
-                statusCard.classList.add('hidden');
+            if (!rowsData.length) {
+                log("❌ La tabla está vacía.");
+                resetUI();
                 return;
             }
 
             const { PDFDocument, rgb } = PDFLib;
-            let mergedPdf = await PDFDocument.create();
+            const mergedPdf = await PDFDocument.create();
             const position = document.getElementById('labelPosition').value;
             const timeoutMs = parseInt(document.getElementById('timeoutSec').value);
 
-            logStatus(`✅ Registros detectados: ${rowsData.length}.\nIniciando optimizador de descargas...\n`);
+            log(`✅ ${rowsData.length} registros cargados. Iniciando descargas...\n`);
 
-            let exitosos = 0;
-            let omitidos = 0;
-
+            let okCount = 0;
             for (let i = 0; i < rowsData.length; i++) {
                 const row = rowsData[i];
                 progressBar.style.width = `${Math.round(((i + 1) / rowsData.length) * 100)}%`;
 
-                const remNom = getValFlexible(row, ['remitentenombre', 'remitente_nombre', 'nombre_remitente']);
-                const remApe = getValFlexible(row, ['remitenteapellidos', 'remitente_apellidos', 'apellidos_remitente']);
-                const destNom = getValFlexible(row, ['destinatarionombre', 'destinatario_nombre', 'nombre_destinatario']);
-                const destApe = getValFlexible(row, ['destinatarioapellidos', 'destinatario_apellidos', 'apellidos_destinatario']);
-                const idEntrada = getValFlexible(row, ['identrada', 'id_de_entrada', 'id', 'id_entrada']) || 'N/A';
-                let rawFileUrl = getValFlexible(row, ['carta', 'url', 'enlace', 'adjunto', 'cartas', 'link']);
+                const rem = getVal(row, ['remitente', 'nombre_remitente']);
+                const dest = getVal(row, ['destinatario', 'nombre_destinatario']);
+                const id = getVal(row, ['id', 'identrada', 'id_entrada']) || (i + 1);
+                let link = getVal(row, ['carta', 'url', 'enlace', 'link']);
 
-                const remitente = `${remNom} ${remApe}`.trim() || 'No especificado';
-                const destinatario = `${destNom} ${destApe}`.trim() || 'No especificado';
-
-                logStatus(`[${i + 1}/${rowsData.length}] ID: ${idEntrada} | ${remitente} -> ${destinatario}`);
-
-                // Liberar hilo principal para refrescar interfaz
+                log(`[${i + 1}/${rowsData.length}] ID: ${id} | ${rem || 'N/A'} -> ${dest || 'N/A'}`);
                 await new Promise(r => requestAnimationFrame(r));
 
-                if (!rawFileUrl || !rawFileUrl.startsWith('http')) {
-                    logStatus(`  ⚠️ Omitido: Sin enlace válido.`);
-                    omitidos++;
+                if (!link || !link.startsWith('http')) {
+                    log(`  ⚠️ Enlace no válido u omitido.`);
                     continue;
                 }
 
-                const fileUrl = convertirUrlADescargaDirecta(rawFileUrl);
+                link = normalizarUrl(link);
 
                 try {
-                    const buffer = await descargarBufferUltrarapido(fileUrl, timeoutMs);
-                    const tipo = detectarTipoBinario(buffer, fileUrl);
+                    const buffer = await descargarBufferConFallback(link, timeoutMs);
+                    const tipo = detectarTipo(buffer);
 
                     if (tipo === 'pdf') {
-                        const loadedPdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
-                        const pages = await mergedPdf.copyPages(loadedPdf, loadedPdf.getPageIndices());
+                        const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
+                        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
                         pages.forEach(p => {
-                            estampillarPagina(p, remitente, destinatario, idEntrada, position, rgb);
+                            estampillar(p, rem, dest, id, position, rgb);
                             mergedPdf.addPage(p);
                         });
-                        logStatus(`  ✅ PDF procesado (${pages.length} pág).`);
-                        exitosos++;
-
-                    } else if (tipo === 'imagen') {
-                        let imgEmbed;
+                        log(`  ✅ PDF integrado (${pages.length} pág)`);
+                        okCount++;
+                    } else if (tipo === 'img') {
+                        let img;
                         try {
-                            imgEmbed = await mergedPdf.embedJpg(buffer);
+                            img = await mergedPdf.embedJpg(buffer);
                         } catch (e) {
-                            imgEmbed = await mergedPdf.embedPng(buffer);
+                            img = await mergedPdf.embedPng(buffer);
                         }
-
-                        const page = mergedPdf.addPage([imgEmbed.width, imgEmbed.height]);
-                        page.drawImage(imgEmbed, { x: 0, y: 0, width: imgEmbed.width, height: imgEmbed.height });
-                        estampillarPagina(page, remitente, destinatario, idEntrada, position, rgb);
-                        logStatus(`  ✅ Imagen añadida exitosamente.`);
-                        exitosos++;
-
+                        const p = mergedPdf.addPage([img.width, img.height]);
+                        p.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+                        estampillar(p, rem, dest, id, position, rgb);
+                        log(`  ✅ Imagen integrada`);
+                        okCount++;
                     } else if (tipo === 'docx') {
-                        const docxText = await mammoth.extractRawText({ arrayBuffer: buffer });
-                        const textLines = docxText.value.split('\n').filter(l => l.trim() !== '');
-
-                        const page = mergedPdf.addPage([595.28, 841.89]); // Tamaño A4 Estándar
-                        let yPos = 800;
-                        const fontSize = 10;
-
-                        textLines.slice(0, 50).forEach(linea => {
-                            if (yPos > 60) {
-                                page.drawText(linea.substring(0, 90), { x: 40, y: yPos, size: fontSize, color: rgb(0.1, 0.1, 0.1) });
-                                yPos -= 14;
+                        const res = await mammoth.extractRawText({ arrayBuffer: buffer });
+                        const p = mergedPdf.addPage([595, 842]);
+                        let y = 800;
+                        res.value.split('\n').slice(0, 45).forEach(line => {
+                            if (y > 50 && line.trim()) {
+                                p.drawText(line.substring(0, 85), { x: 40, y, size: 9, color: rgb(0.1, 0.1, 0.1) });
+                                y -= 14;
                             }
                         });
-
-                        estampillarPagina(page, remitente, destinatario, idEntrada, position, rgb);
-                        logStatus(`  ✅ Documento Word (.docx) texto extraído.`);
-                        exitosos++;
+                        estampillar(p, rem, dest, id, position, rgb);
+                        log(`  ✅ Documento Word (.docx) procesado`);
+                        okCount++;
                     }
-
                 } catch (err) {
-                    logStatus(`  ❌ Error en descarga/procesamiento: ${err.message}`);
-                    omitidos++;
+                    log(`  ❌ Error descargando carta: ${err.message || 'No se pudo saltar la protección CORS'}`);
                 }
             }
 
-            logStatus(`\n==========================================`);
-            logStatus(`Completado. Procesados: ${exitosos} | Fallidos/Omitidos: ${omitidos}`);
+            log(`\n==========================================`);
+            log(`Proceso completado. Documentos unidos: ${okCount}`);
 
-            if (exitosos > 0) {
+            if (okCount > 0) {
                 const pdfBytes = await mergedPdf.save();
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });
                 downloadBtn.href = URL.createObjectURL(blob);
-                downloadBtn.download = `Cartas_Consolidadas.pdf`;
-                downloadSummary.innerText = `Se unieron ${exitosos} registros con éxito.`;
-                statusTitle.innerText = "¡Proceso Finalizado!";
+                downloadBtn.download = "Cartas_Consolidadas.pdf";
+                document.getElementById('downloadSummary').innerText = `Se generó el PDF consolidado con ${okCount} archivos.`;
                 downloadCard.classList.remove('hidden');
-            } else {
-                statusTitle.innerText = "Sin resultados";
             }
-
-            processBtn.disabled = false;
+            resetUI();
         });
 
-        async function descargarTablaGoogle(url) {
-            const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-            if (!match) throw new Error("URL de Google Sheets inválida.");
-            
-            let gid = "0";
-            const gidMatch = url.match(/[?&]gid=([0-9]+)/);
-            if (gidMatch) gid = gidMatch[1];
-
-            const directUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${gid}`;
-            const res = await fetch(directUrl);
-            if (res.ok) {
-                const text = await res.text();
-                if (!text.includes('<!DOCTYPE html>')) return text;
-            }
-            
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`;
-            const resProxy = await fetch(proxyUrl);
-            return await resProxy.text();
-        }
-
-        function convertirUrlADescargaDirecta(url) {
+        function normalizarUrl(url) {
             if (url.includes('drive.google.com')) {
-                const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
-                if (match && match[1]) {
-                    return `https://drive.google.com/uc?export=download&id=${match[1]}`;
-                }
-            }
-            if (url.includes('dropbox.com')) {
-                return url.replace('dl=0', 'dl=1');
+                const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
+                if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
             }
             return url;
         }
 
-        async function descargarBufferUltrarapido(url, timeoutMs) {
+        function obtenerUrlExportacion(url) {
+            const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (!m) throw new Error("URL de Google Sheets inválida");
+            const gid = (url.match(/[?&]gid=([0-9]+)/) || [])[1] || "0";
+            return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`;
+        }
+
+        async function descargarTextoConTimeout(url, ms) {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            const t = setTimeout(() => controller.abort(), ms);
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(t);
+            return await res.text();
+        }
 
+        async function descargarBufferConFallback(url, ms) {
+            // Intentar descarga directa primero
             try {
+                const controller = new AbortController();
+                const t = setTimeout(() => controller.abort(), ms);
                 const res = await fetch(url, { signal: controller.signal });
-                clearTimeout(timer);
+                clearTimeout(t);
                 if (res.ok) return await res.arrayBuffer();
-            } catch (e) {
-                clearTimeout(timer);
-            }
+            } catch (e) {}
 
-            // Un solo proxy fallback de alta velocidad
-            const proxyController = new AbortController();
-            const proxyTimer = setTimeout(() => proxyController.abort(), timeoutMs);
+            // Fallback 1: Proxy CORS Corsproxy.io
             try {
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                const res = await fetch(proxyUrl, { signal: proxyController.signal });
-                clearTimeout(proxyTimer);
+                const controller = new AbortController();
+                const t = setTimeout(() => controller.abort(), ms);
+                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: controller.signal });
+                clearTimeout(t);
                 if (res.ok) return await res.arrayBuffer();
-            } catch (e) {
-                clearTimeout(proxyTimer);
-            }
+            } catch (e) {}
 
-            throw new Error("Acceso denegado/Timeout CORS.");
+            // Fallback 2: Proxy AllOrigins
+            try {
+                const controller = new AbortController();
+                const t = setTimeout(() => controller.abort(), ms);
+                const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+                clearTimeout(t);
+                if (res.ok) return await res.arrayBuffer();
+            } catch (e) {}
+
+            throw new Error("El servidor de origen bloquea la lectura por CORS.");
         }
 
-        function detectarTipoBinario(buf, url) {
+        function detectarTipo(buf) {
             const u = new Uint8Array(buf.slice(0, 4));
-            if (u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) return 'pdf';
-            if ((u[0] === 0x50 && u[1] === 0x4B) || url.toLowerCase().includes('.docx')) return 'docx';
-            return 'imagen';
+            if (u[0] === 0x25 && u[1] === 0x50) return 'pdf';
+            if (u[0] === 0x50 && u[1] === 0x4B) return 'docx';
+            return 'img';
         }
 
-        function getValFlexible(row, targetKeys) {
-            for (let key in row) {
-                const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-                for (let target of targetKeys) {
-                    if (cleanKey === target || cleanKey.includes(target)) {
-                        return String(row[key]).trim();
-                    }
-                }
+        function getVal(row, keys) {
+            for (let k in row) {
+                let clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (keys.some(key => clean.includes(key))) return String(row[k]).trim();
             }
             return '';
         }
 
-        function estampillarPagina(page, remitente, destinatario, idEntrada, position, rgb) {
+        function estampillar(page, rem, dest, id, pos, rgb) {
             const { width, height } = page.getSize();
-            const fontSize = 9;
-            const lineHeight = 12;
-            let x = 20;
-            let y = height - 20;
-
-            if (position.includes('right')) x = Math.max(20, width - 230);
-            if (position.includes('bottom')) y = 45;
+            let x = pos.includes('right') ? Math.max(20, width - 210) : 20;
+            let y = pos.includes('bottom') ? 40 : height - 20;
 
             page.drawRectangle({
-                x: x - 5,
-                y: y - (lineHeight * 2) - 5,
-                width: 225,
-                height: (lineHeight * 3) + 6,
-                color: rgb(1, 1, 1),
-                opacity: 0.9,
-                borderColor: rgb(0.5, 0.5, 0.5),
-                borderWidth: 1,
+                x: x - 4, y: y - 24, width: 200, height: 32,
+                color: rgb(1, 1, 1), borderColor: rgb(0.6, 0.6, 0.6), borderWidth: 1
             });
-
-            page.drawText(`ID Entrada: ${idEntrada}`, { x, y, size: fontSize, color: rgb(0, 0, 0) });
-            page.drawText(`Remitente: ${remitente.substring(0, 35)}`, { x, y: y - lineHeight, size: fontSize, color: rgb(0.1, 0.1, 0.1) });
-            page.drawText(`Destinatario: ${destinatario.substring(0, 35)}`, { x, y: y - (lineHeight * 2), size: fontSize, color: rgb(0.1, 0.1, 0.1) });
+            page.drawText(`ID: ${id}`, { x, y, size: 8, color: rgb(0, 0, 0) });
+            page.drawText(`De: ${(rem || 'N/A').substring(0, 30)}`, { x, y: y - 10, size: 8, color: rgb(0.2, 0.2, 0.2) });
+            page.drawText(`Para: ${(dest || 'N/A').substring(0, 30)}`, { x, y: y - 20, size: 8, color: rgb(0.2, 0.2, 0.2) });
         }
 
-        function logStatus(msg) {
+        function log(msg) {
             statusText.innerText += msg + '\n';
             statusText.scrollTop = statusText.scrollHeight;
+        }
+
+        function resetUI() {
+            processBtn.disabled = false;
         }
     </script>
 </body>
