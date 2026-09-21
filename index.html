@@ -13,7 +13,7 @@
 
     <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6 border border-slate-200">
         <h1 class="text-xl font-bold text-indigo-700 mb-1">Unificador Definitivo de Cartas</h1>
-        <p class="text-xs text-slate-500 mb-4">Soporta PDFs, Imágenes y extracción completa de Nombres + Apellidos</p>
+        <p class="text-xs text-slate-500 mb-4">Soporte completo para PDFs, Imágenes y Nombre + Apellido</p>
 
         <div class="space-y-4">
             <div>
@@ -124,7 +124,6 @@
                 const row = rowsData[i];
                 progressBar.style.width = `${Math.round(((i + 1) / rowsData.length) * 100)}%`;
 
-                // Extracción inteligente de Nombres + Apellidos completos
                 const rem = obtenerNombreCompleto(row, 'remitente');
                 const dest = obtenerNombreCompleto(row, 'destinatario');
                 const id = getVal(row, ['id', 'identrada', 'id_entrada']) || (i + 1);
@@ -142,9 +141,10 @@
 
                 try {
                     const buffer = await descargarConMultiproxy(link, timeoutMs);
-                    const tipo = detectarTipo(buffer);
+                    const tipo = detectarTipo(buffer, link);
 
                     if (tipo === 'pdf') {
+                        // Carga limpia de PDF usando ignoreEncryption para máxima compatibilidad
                         const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
                         const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
                         pages.forEach(p => {
@@ -180,7 +180,7 @@
                         okCount++;
                     }
                 } catch (err) {
-                    log(`  ❌ Error descargando carta: ${err.message}`);
+                    log(`  ❌ Error procesando documento: ${err.message}`);
                 }
             }
 
@@ -217,9 +217,9 @@
             return await res.text();
         }
 
-        // DESCARGA MULTI-PROXY OPTIMIZADA PARA PDFs
+        // MOTOR DE DESCARGA PROBADO Y FUNCIONAL PARA RED Y PDFS
         async function descargarConMultiproxy(url, ms) {
-            // 1. Intento directo
+            // 1. Intento Directo
             try {
                 const c1 = new AbortController();
                 const t1 = setTimeout(() => c1.abort(), 3000);
@@ -228,7 +228,7 @@
                 if (r1.ok) return await r1.arrayBuffer();
             } catch (e) {}
 
-            // 2. Proxy CorsProxy.io (Mejor rendimiento para PDFs de WP)
+            // 2. Proxy CorsProxy (Optimizante de flujos binarios PDF)
             try {
                 const c2 = new AbortController();
                 const t2 = setTimeout(() => c2.abort(), ms);
@@ -237,7 +237,7 @@
                 if (r2.ok) return await r2.arrayBuffer();
             } catch (e) {}
 
-            // 3. Proxy CodeTabs (Especializado en peticiones CORS binarias)
+            // 3. Proxy CodeTabs (Resguardo binario)
             try {
                 const c3 = new AbortController();
                 const t3 = setTimeout(() => c3.abort(), ms);
@@ -246,17 +246,23 @@
                 if (r3.ok) return await r3.arrayBuffer();
             } catch (e) {}
 
-            throw new Error("El servidor de origen bloqueó la lectura remota del PDF.");
+            throw new Error("No se pudo descargar el archivo.");
         }
 
-        function detectarTipo(buf) {
+        // DETECCIÓN DOBLE: POR FIRMA DE ARCHIVO Y POR EXTENSIÓN EN LA URL
+        function detectarTipo(buf, url) {
             const u = new Uint8Array(buf.slice(0, 4));
-            if (u[0] === 0x25 && u[1] === 0x50) return 'pdf'; // %PDF
-            if (u[0] === 0x50 && u[1] === 0x4B) return 'docx'; // PK..
+            // %PDF
+            if (u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) return 'pdf';
+            // PK.. (DOCX)
+            if (u[0] === 0x50 && u[1] === 0x4B) return 'docx';
+            // Validación por URL en caso de cabeceras comprimidas
+            if (url.toLowerCase().includes('.pdf')) return 'pdf';
+            
             return 'img';
         }
 
-        // LÓGICA DE EXTRACCIÓN MEJORADA: CONCATENA NOMBRE Y APELLIDO
+        // EXTRACCIÓN AUTOMÁTICA DE NOMBRE + APELLIDO
         function obtenerNombreCompleto(row, tipo) {
             let nombre = '';
             let apellido = '';
@@ -272,7 +278,6 @@
                 }
             }
 
-            // Si no separó por palabras clave explícitas, busca campos genéricos de apellido
             if (!apellido) {
                 for (let k in row) {
                     let clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
