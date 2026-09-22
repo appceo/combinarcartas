@@ -1,338 +1,281 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consolidador Definitivo - Igleco</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consolidador de Cartas y Documentos</title>
+  <!-- Tailwind CSS para diseño profesional -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PapaParse para procesar CSV -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- SheetJS para procesar Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- PDF-Lib para manipular y unificar PDFs -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <!-- font-awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 p-6">
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6 border border-slate-200">
-        <h1 class="text-xl font-bold text-indigo-700 mb-1">Unificador Definitivo de Cartas</h1>
-        <p class="text-xs text-slate-500 mb-4">Soporte completo para PDFs, Imágenes y Nombre + Apellido</p>
-
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-semibold mb-1">1. Seleccionar Excel (.xlsx) o CSV:</label>
-                <input type="file" id="dataFile" accept=".csv, .xlsx, .xls" class="w-full text-sm border p-2 rounded cursor-pointer bg-slate-50"/>
-            </div>
-
-            <div class="text-center font-bold text-slate-400 text-xs">--- O ---</div>
-
-            <div>
-                <label class="block text-sm font-semibold mb-1">2. Enlace de Google Sheets:</label>
-                <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full text-sm border p-2 rounded" />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold mb-1">Posición Sello:</label>
-                    <select id="labelPosition" class="w-full text-sm border p-2 rounded">
-                        <option value="bottom-right">Esquina Inferior Derecha</option>
-                        <option value="top-right">Esquina Superior Derecha</option>
-                        <option value="bottom-left">Esquina Inferior Izquierda</option>
-                        <option value="top-left">Esquina Superior Izquierda</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold mb-1">Tiempo Límite por Archivo:</label>
-                    <select id="timeoutSec" class="w-full text-sm border p-2 rounded">
-                        <option value="15000" selected>15 Segundos</option>
-                        <option value="25000">25 Segundos</option>
-                    </select>
-                </div>
-            </div>
-
-            <button id="processBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded transition">
-                Iniciar Procesamiento
-            </button>
+  <!-- Encabezado -->
+  <header class="bg-indigo-700 text-white shadow-lg py-6 px-8">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-file-pdf text-3xl text-indigo-200"></i>
+        <div>
+          <h1 class="text-2xl font-bold">Consolidador de Cartas</h1>
+          <p class="text-xs text-indigo-200">Generador de paquete único unificado en PDF</p>
         </div>
-
-        <div id="statusCard" class="hidden mt-6">
-            <div class="w-full bg-slate-200 rounded-full h-2 mb-3">
-                <div id="progressBar" class="bg-indigo-600 h-2 rounded-full w-0 transition-all"></div>
-            </div>
-            <div id="statusText" class="text-xs font-mono bg-slate-900 text-green-400 p-3 rounded h-64 overflow-y-auto whitespace-pre-wrap"></div>
-        </div>
-
-        <div id="downloadCard" class="hidden mt-6 p-4 bg-emerald-100 border border-emerald-300 rounded text-center">
-            <p id="downloadSummary" class="text-emerald-800 font-bold mb-2"></p>
-            <a id="downloadBtn" class="inline-block py-2 px-6 bg-emerald-600 text-white font-bold rounded hover:bg-emerald-700 cursor-pointer">
-                Descargar PDF Consolidado
-            </a>
-        </div>
+      </div>
+      <span class="bg-indigo-800 text-indigo-100 text-xs px-3 py-1 rounded-full font-medium">Versión Web 1.0</span>
     </div>
+  </header>
 
-    <script>
-        const processBtn = document.getElementById('processBtn');
-        const csvUrlInput = document.getElementById('csvUrl');
-        const dataFileInput = document.getElementById('dataFile');
-        const statusCard = document.getElementById('statusCard');
-        const progressBar = document.getElementById('progressBar');
-        const statusText = document.getElementById('statusText');
-        const downloadCard = document.getElementById('downloadCard');
-        const downloadBtn = document.getElementById('downloadBtn');
+  <!-- Contenido Principal -->
+  <main class="max-w-5xl mx-auto w-full flex-1 p-6 space-y-6">
 
-        processBtn.addEventListener('click', async () => {
-            let rowsData = [];
-            statusCard.classList.remove('hidden');
-            downloadCard.classList.add('hidden');
-            statusText.innerText = "";
-            processBtn.disabled = true;
+    <!-- Card de Entrada de Datos -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+        <i class="fa-solid fa-database text-indigo-600"></i> Origen de Datos
+      </h2>
 
-            try {
-                if (dataFileInput.files[0]) {
-                    log("Leyendo archivo local...");
-                    const data = await dataFileInput.files[0].arrayBuffer();
-                    const wb = XLSX.read(new Uint8Array(data), { type: 'array' });
-                    rowsData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
-                } else if (csvUrlInput.value.trim()) {
-                    log("Obteniendo datos de Google Sheets...");
-                    const csvText = await descargarTextoConTimeout(obtenerUrlExportacion(csvUrlInput.value.trim()), 10000);
-                    const wb = XLSX.read(csvText, { type: 'string' });
-                    rowsData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
-                } else {
-                    alert("Selecciona un archivo Excel local o pega un enlace.");
-                    resetUI();
-                    return;
-                }
-            } catch (e) {
-                log(`❌ Error al cargar la lista: ${e.message}`);
-                resetUI();
-                return;
-            }
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Opción 1: Enlace URL -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-slate-700">Enlace a la Base de Datos (CSV/Excel Público)</label>
+          <div class="relative">
+            <input type="url" id="dbUrl" placeholder="https://ejemplo.com/datos.csv o Google Sheets CSV" 
+                   class="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <i class="fa-solid fa-link absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+          </div>
+          <p class="text-xs text-slate-500">Soporta enlaces directos a CSV o publicados desde Google Sheets.</p>
+        </div>
 
-            if (!rowsData.length) {
-                log("❌ La tabla no contiene registros.");
-                resetUI();
-                return;
-            }
+        <!-- Opción 2: Archivo Local -->
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-slate-700">O Cargar Archivo Excel / CSV Local</label>
+          <input type="file" id="dbFile" accept=".csv, .xlsx, .xls" 
+                 class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-300 rounded-lg cursor-pointer">
+        </div>
+      </div>
 
-            const { PDFDocument, rgb } = PDFLib;
-            const mergedPdf = await PDFDocument.create();
-            const position = document.getElementById('labelPosition').value;
-            const timeoutMs = parseInt(document.getElementById('timeoutSec').value);
+      <!-- Botón de Procesamiento -->
+      <div class="pt-2 flex justify-end">
+        <button id="btnStart" onclick="procesarRegistros()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-lg shadow transition duration-200 flex items-center gap-2">
+          <i class="fa-solid fa-gear"></i> Iniciar Consolidación
+        </button>
+      </div>
+    </section>
 
-            log(`✅ Tabla cargada. Se encontraron ${rowsData.length} registros.\nIniciando descarga y unión de cartas...\n`);
+    <!-- Estado y Progreso -->
+    <section id="statusCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+        <i class="fa-solid fa-spinner text-indigo-600 animate-spin" id="spinner"></i> Estado del Proceso
+      </h2>
+      <p id="statusMessage" class="text-sm text-slate-600">Cargando base de datos...</p>
+      
+      <!-- Barra de Progreso -->
+      <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+        <div id="progressBar" class="bg-indigo-600 h-3 w-0 transition-all duration-300"></div>
+      </div>
+      <div id="logContainer" class="bg-slate-900 text-green-400 p-4 rounded-lg text-xs font-mono h-40 overflow-y-auto space-y-1">
+        <div>> Sistema listo. Esperando inicio...</div>
+      </div>
+    </section>
 
-            let okCount = 0;
-            for (let i = 0; i < rowsData.length; i++) {
-                const row = rowsData[i];
-                progressBar.style.width = `${Math.round(((i + 1) / rowsData.length) * 100)}%`;
+  </main>
 
-                const rem = obtenerNombreCompleto(row, 'remitente');
-                const dest = obtenerNombreCompleto(row, 'destinatario');
-                const id = getVal(row, ['id', 'identrada', 'id_entrada']) || (i + 1);
-                let link = getVal(row, ['carta', 'url', 'enlace', 'link', 'archivo']);
+  <!-- Lógica JavaScript -->
+  <script>
+    const log = (msg) => {
+      const container = document.getElementById('logContainer');
+      const entry = document.createElement('div');
+      entry.textContent = `> ${msg}`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    };
 
-                log(`[${i + 1}/${rowsData.length}] ID: ${id} | ${rem} -> ${dest}`);
-                await new Promise(r => requestAnimationFrame(r));
+    const updateStatus = (msg, percent) => {
+      document.getElementById('statusMessage').textContent = msg;
+      document.getElementById('progressBar').style.width = `${percent}%`;
+      log(msg);
+    };
 
-                if (!link || !link.startsWith('http')) {
-                    log(`  ⚠️ Enlace vacío o no válido.`);
-                    continue;
-                }
+    async function procesarRegistros() {
+      const urlInput = document.getElementById('dbUrl').value.trim();
+      const fileInput = document.getElementById('dbFile').files[0];
 
-                link = limpiarUrl(link);
+      if (!urlInput && !fileInput) {
+        alert('Por favor, ingresa un enlace a la base de datos o sube un archivo Excel/CSV.');
+        return;
+      }
 
-                try {
-                    const buffer = await descargarConMultiproxy(link, timeoutMs);
-                    const tipo = detectarTipo(buffer, link);
+      document.getElementById('statusCard').classList.remove('hidden');
+      updateStatus('Leyendo base de datos...', 5);
 
-                    if (tipo === 'pdf') {
-                        const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
-                        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                        pages.forEach(p => {
-                            estampillar(p, rem, dest, id, position, rgb);
-                            mergedPdf.addPage(p);
-                        });
-                        log(`  ✅ PDF integrado (${pages.length} pág)`);
-                        okCount++;
-                    } else if (tipo === 'img') {
-                        let img;
-                        try {
-                            img = await mergedPdf.embedJpg(buffer);
-                        } catch (e) {
-                            img = await mergedPdf.embedPng(buffer);
-                        }
-                        const p = mergedPdf.addPage([img.width, img.height]);
-                        p.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
-                        estampillar(p, rem, dest, id, position, rgb);
-                        log(`  ✅ Imagen integrada.`);
-                        okCount++;
-                    } else if (tipo === 'docx') {
-                        const res = await mammoth.extractRawText({ arrayBuffer: buffer });
-                        const p = mergedPdf.addPage([595, 842]);
-                        let y = 800;
-                        res.value.split('\n').slice(0, 45).forEach(line => {
-                            if (y > 50 && line.trim()) {
-                                p.drawText(line.substring(0, 85), { x: 40, y, size: 9, color: rgb(0.1, 0.1, 0.1) });
-                                y -= 14;
-                            }
-                        });
-                        estampillar(p, rem, dest, id, position, rgb);
-                        log(`  ✅ Documento Word (.docx) integrado.`);
-                        okCount++;
-                    }
-                } catch (err) {
-                    log(`  ❌ Error descargando carta: ${err.message}`);
-                }
-            }
+      try {
+        let rows = [];
+        if (fileInput) {
+          rows = await parseLocalFile(fileInput);
+        } else {
+          rows = await fetchRemoteData(urlInput);
+        }
 
-            log(`\n==========================================`);
-            log(`Proceso finalizado. Total unidos: ${okCount} de ${rowsData.length}`);
+        if (!rows || rows.length === 0) {
+          throw new Error('No se encontraron registros validos en la base de datos.');
+        }
 
-            if (okCount > 0) {
-                const pdfBytes = await mergedPdf.save();
-                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                downloadBtn.href = URL.createObjectURL(blob);
-                downloadBtn.download = "Cartas_Consolidadas.pdf";
-                document.getElementById('downloadSummary').innerText = `¡Éxito! Se unieron ${okCount} documentos correctamente.`;
-                downloadCard.classList.remove('hidden');
-            }
-            resetUI();
+        log(`Se encontraron ${rows.length} registros para procesar.`);
+        await generarPDFConsolidado(rows);
+
+      } catch (err) {
+        log(`ERROR: ${err.message}`);
+        document.getElementById('spinner').classList.remove('animate-spin');
+        document.getElementById('spinner').classList.add('text-red-500');
+        alert(`Ocurrió un error: ${err.message}`);
+      }
+    }
+
+    // Parsear archivo local (Excel / CSV)
+    function parseLocalFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.SheetNames[0];
+          const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+          resolve(json);
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Fetch datos desde enlace
+    async function fetchRemoteData(url) {
+      const res = await fetch(url);
+      const text = await res.text();
+      return new Promise((resolve) => {
+        Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => resolve(results.data)
         });
+      });
+    }
 
-        function limpiarUrl(url) {
-            return url.trim().replace(/ /g, '%20');
+    // Generar PDF Unificado
+    async function generarPDFConsolidado(registros) {
+      const { PDFDocument, rgb, StandardFonts } = PDFLib;
+      const pdfMaestro = await PDFDocument.create();
+      const font = await pdfMaestro.embedFont(StandardFonts.HelveticaBold);
+      const fontRegular = await pdfMaestro.embedFont(StandardFonts.Helvetica);
+
+      const total = registros.length;
+
+      for (let i = 0; i < total; i++) {
+        const reg = registros[i];
+        const stepPercent = Math.round(((i + 1) / total) * 90);
+        
+        // Mapeo flexible de columnas
+        const id = reg.ID || reg.id || reg.Registro || `REG-${i+1}`;
+        const remNombre = reg.Nombre_Remitente || reg.Remitente_Nombre || reg.Remitente || '';
+        const remApellido = reg.Apellido_Remitente || reg.Remitente_Apellido || '';
+        const destNombre = reg.Nombre_Destinatario || reg.Destinatario_Nombre || reg.Destinatario || '';
+        const destApellido = reg.Apellido_Destinatario || reg.Destinatario_Apellido || '';
+        const urlDoc = reg.URL || reg.Url || reg.Documento || reg.Carta || '';
+
+        const remitente = `${remNombre} ${remApellido}`.trim();
+        const destinatario = `${destNombre} ${destApellido}`.trim();
+
+        updateStatus(`Procesando registro ${i + 1} de ${total}: ID ${id}`, stepPercent);
+
+        if (!urlDoc) {
+          log(`Advertencia: Registro ID ${id} no tiene URL de carta. Omitiendo...`);
+          continue;
         }
 
-        function obtenerUrlExportacion(url) {
-            const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-            if (!m) throw new Error("URL de Google Sheets no válida");
-            const gid = (url.match(/[?&]gid=([0-9]+)/) || [])[1] || "0";
-            return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`;
-        }
+        try {
+          const res = await fetch(urlDoc);
+          const blob = await res.blob();
+          const buffer = await blob.arrayBuffer();
+          const contentType = res.headers.get('content-type') || '';
 
-        async function descargarTextoConTimeout(url, ms) {
-            const controller = new AbortController();
-            const t = setTimeout(() => controller.abort(), ms);
-            const res = await fetch(url, { signal: controller.signal });
-            clearTimeout(t);
-            return await res.text();
-        }
-
-        // MOTOR DE DESCARGA AVANZADO PARA BLOQUEOS RÍGIDOS
-        async function descargarConMultiproxy(url, ms) {
-            // 1. Intento por Proxy de Bypass Directo (Con Header Forzado)
-            try {
-                const c1 = new AbortController();
-                const t1 = setTimeout(() => c1.abort(), ms);
-                const r1 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: c1.signal });
-                clearTimeout(t1);
-                if (r1.ok) {
-                    const buf = await r1.arrayBuffer();
-                    if (buf.byteLength > 500) return buf;
-                }
-            } catch (e) {}
-
-            // 2. Intento por Proxy especializado en Wordpress/GravityForms
-            try {
-                const c2 = new AbortController();
-                const t2 = setTimeout(() => c2.abort(), ms);
-                const r2 = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: c2.signal });
-                clearTimeout(t2);
-                if (r2.ok) {
-                    const buf = await r2.arrayBuffer();
-                    if (buf.byteLength > 500) return buf;
-                }
-            } catch (e) {}
-
-            // 3. Intento vía ThingProxy
-            try {
-                const c3 = new AbortController();
-                const t3 = setTimeout(() => c3.abort(), ms);
-                const r3 = await fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: c3.signal });
-                clearTimeout(t3);
-                if (r3.ok) {
-                    const buf = await r3.arrayBuffer();
-                    if (buf.byteLength > 500) return buf;
-                }
-            } catch (e) {}
-
-            // 4. Intento Directo (por si el cliente deshabilitó CORS o es el mismo origen)
-            try {
-                const c4 = new AbortController();
-                const t4 = setTimeout(() => c4.abort(), 3000);
-                const r4 = await fetch(url, { signal: c4.signal });
-                clearTimeout(t4);
-                if (r4.ok) return await r4.arrayBuffer();
-            } catch (e) {}
-
-            throw new Error("El servidor de origen bloqueó la lectura remota del PDF.");
-        }
-
-        function detectarTipo(buf, url) {
-            const u = new Uint8Array(buf.slice(0, 4));
-            if (u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) return 'pdf';
-            if (u[0] === 0x50 && u[1] === 0x4B) return 'docx';
-            if (url.toLowerCase().includes('.pdf')) return 'pdf';
-            return 'img';
-        }
-
-        function obtenerNombreCompleto(row, tipo) {
-            let nombre = '';
-            let apellido = '';
-
-            for (let k in row) {
-                let clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (clean.includes(tipo)) {
-                    if (clean.includes('apellido')) {
-                        apellido = String(row[k]).trim();
-                    } else if (clean.includes('nombre') || clean === tipo) {
-                        nombre = String(row[k]).trim();
-                    }
-                }
-            }
-
-            if (!apellido) {
-                for (let k in row) {
-                    let clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (clean.includes('apellido') && !clean.includes(tipo === 'remitente' ? 'destinatario' : 'remitente')) {
-                        apellido = String(row[k]).trim();
-                        break;
-                    }
-                }
-            }
-
-            let completo = `${nombre} ${apellido}`.trim();
-            return completo || 'N/A';
-        }
-
-        function getVal(row, keys) {
-            for (let k in row) {
-                let clean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (keys.some(key => clean.includes(key))) return String(row[k]).trim();
-            }
-            return '';
-        }
-
-        function estampillar(page, rem, dest, id, pos, rgb) {
-            const { width, height } = page.getSize();
-            let x = pos.includes('right') ? Math.max(20, width - 230) : 20;
-            let y = pos.includes('bottom') ? 45 : height - 20;
-
-            page.drawRectangle({
-                x: x - 4, y: y - 24, width: 220, height: 34,
-                color: rgb(1, 1, 1), borderColor: rgb(0.6, 0.6, 0.6), borderWidth: 1
+          if (urlDoc.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')) {
+            // Documento PDF
+            const pdfDoc = await PDFDocument.load(buffer);
+            const copiedPages = await pdfMaestro.copyPages(pdfDoc, pdfDoc.getPageIndices());
+            
+            copiedPages.forEach((page) => {
+              // Estampar Encabezado en cada página del PDF
+              const { width, height } = page.getSize();
+              page.drawRectangle({
+                x: 0, y: height - 40, width: width, height: 40,
+                color: rgb(0.95, 0.95, 0.98)
+              });
+              page.drawText(`ID REGISTRO: ${id} | REMITENTE: ${remitente} | DESTINATARIO: ${destinatario}`, {
+                x: 15, y: height - 25, size: 9, font: font, color: rgb(0.1, 0.1, 0.3)
+              });
+              pdfMaestro.addPage(page);
             });
-            page.drawText(`ID: ${id}`, { x, y, size: 8, color: rgb(0, 0, 0) });
-            page.drawText(`De: ${(rem || 'N/A').substring(0, 35)}`, { x, y: y - 10, size: 8, color: rgb(0.2, 0.2, 0.2) });
-            page.drawText(`Para: ${(dest || 'N/A').substring(0, 35)}`, { x, y: y - 20, size: 8, color: rgb(0.2, 0.2, 0.2) });
-        }
 
-        function log(msg) {
-            statusText.innerText += msg + '\n';
-            statusText.scrollTop = statusText.scrollHeight;
-        }
+          } else if (urlDoc.toLowerCase().match(/\.(jpg|jpeg|png)$/) || contentType.includes('image')) {
+            // Imagen JPG/PNG
+            const page = pdfMaestro.addPage([612, 792]); // Tamaño Carta Estándar
+            let img;
+            if (urlDoc.toLowerCase().includes('.png') || contentType.includes('png')) {
+              img = await pdfMaestro.embedPng(buffer);
+            } else {
+              img = await pdfMaestro.embedJpg(buffer);
+            }
 
-        function resetUI() {
-            processBtn.disabled = false;
+            // Dibujar Encabezado
+            page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.95, 0.95, 0.98) });
+            page.drawText(`ID REGISTRO: ${id} | REMITENTE: ${remitente} | DESTINATARIO: ${destinatario}`, {
+              x: 15, y: 767, size: 9, font: font, color: rgb(0.1, 0.1, 0.3)
+            });
+
+            // Ajustar imagen en la página
+            const imgDims = img.scaleToFit(582, 720);
+            page.drawImage(img, {
+              x: 15, y: 740 - imgDims.height,
+              width: imgDims.width, height: imgDims.height
+            });
+
+          } else {
+            // Documento Word (.docx) o no soportado nativamente -> Portada de Referencia
+            const page = pdfMaestro.addPage([612, 792]);
+            page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.95, 0.95, 0.98) });
+            page.drawText(`ID REGISTRO: ${id} | REMITENTE: ${remitente} | DESTINATARIO: ${destinatario}`, {
+              x: 15, y: 767, size: 9, font: font, color: rgb(0.1, 0.1, 0.3)
+            });
+
+            page.drawText('Documento Word Adjunto', { x: 50, y: 650, size: 18, font: font, color: rgb(0.2, 0.2, 0.2) });
+            page.drawText(`El documento asignado a este registro es un archivo Word (.docx).`, { x: 50, y: 610, size: 11, font: fontRegular });
+            page.drawText(`Enlace directo al documento: ${urlDoc}`, { x: 50, y: 590, size: 10, font: fontRegular, color: rgb(0, 0, 0.8) });
+          }
+
+        } catch (fileErr) {
+          log(`Error descargando o uniendo archivo ID ${id}: ${fileErr.message}`);
         }
-    </script>
+      }
+
+      updateStatus('Compilando paquete PDF unificado final...', 95);
+      const pdfBytes = await pdfMaestro.save();
+
+      // Disparar Descarga
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Paquete_Cartas_Unificadas_${Date.now()}.pdf`;
+      link.click();
+
+      updateStatus('¡Proceso completado con éxito! Se ha descargado el paquete.', 100);
+      document.getElementById('spinner').classList.remove('animate-spin');
+      document.getElementById('spinner').classList.add('text-green-500');
+    }
+  </script>
 </body>
 </html>
