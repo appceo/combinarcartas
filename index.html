@@ -3,278 +3,347 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consolidador de Cartas y Documentos</title>
-  <!-- Tailwind CSS para diseño profesional -->
+  <title>Consolidador de Cartas - Transformador de URLs</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- PapaParse para procesar CSV -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <!-- SheetJS para procesar Excel -->
+  <!-- SheetJS para Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- PDF-Lib para manipular y unificar PDFs -->
+  <!-- PapaParse para CSV -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- PDF-Lib para consolidar PDFs -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <!-- font-awesome -->
+  <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-  <!-- Encabezado -->
-  <header class="bg-indigo-700 text-white shadow-lg py-6 px-8">
-    <div class="max-w-5xl mx-auto flex items-center justify-between">
+  <!-- Header -->
+  <header class="bg-indigo-800 text-white py-5 px-8 shadow-md">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <i class="fa-solid fa-file-pdf text-3xl text-indigo-200"></i>
+        <i class="fa-solid fa-wand-magic-sparkles text-2xl text-indigo-300"></i>
         <div>
-          <h1 class="text-2xl font-bold">Consolidador de Cartas</h1>
-          <p class="text-xs text-indigo-200">Generador de paquete único unificado en PDF</p>
+          <h1 class="text-xl font-bold">Consolidador & Transformador de URLs</h1>
+          <p class="text-xs text-indigo-200">Conversión de enlaces a descargas directas + Empaquetado PDF</p>
         </div>
       </div>
-      <span class="bg-indigo-800 text-indigo-100 text-xs px-3 py-1 rounded-full font-medium">Versión Web 1.0</span>
     </div>
   </header>
 
-  <!-- Contenido Principal -->
-  <main class="max-w-5xl mx-auto w-full flex-1 p-6 space-y-6">
+  <main class="max-w-6xl mx-auto w-full flex-1 p-6 space-y-6">
 
-    <!-- Card de Entrada de Datos -->
+    <!-- PASO 1: Carga y Transformación de URLs -->
     <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-      <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-        <i class="fa-solid fa-database text-indigo-600"></i> Origen de Datos
-      </h2>
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <span class="bg-indigo-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">1</span>
+          Cargar Base de Datos Oficial & Transformar URLs
+        </h2>
+        <span id="badgeStep1" class="hidden bg-amber-100 text-amber-800 text-xs px-3 py-1 rounded-full font-medium">URLs Convertidas</span>
+      </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Opción 1: Enlace URL -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-slate-700">Enlace a la Base de Datos (CSV/Excel Público)</label>
-          <div class="relative">
-            <input type="url" id="dbUrl" placeholder="https://ejemplo.com/datos.csv o Google Sheets CSV" 
-                   class="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <i class="fa-solid fa-link absolute left-3 top-2.5 text-slate-400 text-sm"></i>
-          </div>
-          <p class="text-xs text-slate-500">Soporta enlaces directos a CSV o publicados desde Google Sheets.</p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Enlace a la Tabla de Datos (URL pública / CSV)</label>
+          <input type="url" id="dbUrl" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" 
+                 class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
         </div>
-
-        <!-- Opción 2: Archivo Local -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-slate-700">O Cargar Archivo Excel / CSV Local</label>
+        <div>
+          <label class="block text-sm font-medium text-slate-700">O Cargar Archivo de la Base de Datos (.xlsx, .csv)</label>
           <input type="file" id="dbFile" accept=".csv, .xlsx, .xls" 
-                 class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-300 rounded-lg cursor-pointer">
+                 class="w-full mt-1 text-sm text-slate-500 border border-slate-300 rounded-lg file:py-2 file:px-4 file:border-0 file:bg-indigo-50 file:text-indigo-700">
         </div>
       </div>
 
-      <!-- Botón de Procesamiento -->
-      <div class="pt-2 flex justify-end">
-        <button id="btnStart" onclick="procesarRegistros()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-lg shadow transition duration-200 flex items-center gap-2">
-          <i class="fa-solid fa-gear"></i> Iniciar Consolidación
+      <div class="flex justify-end gap-3 pt-2">
+        <button onclick="transformarURLs()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2 rounded-lg text-sm transition flex items-center gap-2">
+          <i class="fa-solid fa-link-slash"></i> Transformar URLs a Enlaces Directos
+        </button>
+      </div>
+
+      <!-- Vista previa de Tabla Transformada -->
+      <div id="previewContainer" class="hidden space-y-3 pt-4 border-t border-slate-100">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-700">Vista previa de datos con URLs transformadas:</h3>
+          <button onclick="exportarExcelCorregido()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded flex items-center gap-1">
+            <i class="fa-solid fa-file-excel"></i> Descargar Excel con URLs Abiertas
+          </button>
+        </div>
+        <div class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg text-xs font-mono bg-slate-50">
+          <table class="w-full text-left border-collapse" id="previewTable">
+            <thead class="bg-slate-200 text-slate-700 sticky top-0">
+              <tr>
+                <th class="p-2 border-b">ID</th>
+                <th class="p-2 border-b">Remitente</th>
+                <th class="p-2 border-b">Destinatario</th>
+                <th class="p-2 border-b">URL Original</th>
+                <th class="p-2 border-b">URL Directa Transformada</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 2: Generación del Paquete PDF Consolidado -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4 opacity-50 pointer-events-none transition-all duration-300" id="sectionStep2">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <span class="bg-indigo-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">2</span>
+          Generar Paquete Entregable Consolidado
+        </h2>
+      </div>
+
+      <p class="text-sm text-slate-600">
+        Una vez validadas y transformadas las URLs, el sistema descargará en segundo plano cada documento/imagen abierto y estampará los encabezados de identificación en cada hoja.
+      </p>
+
+      <div class="flex justify-end">
+        <button id="btnBuildPackage" onclick="construirPaquetePDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-lg shadow transition flex items-center gap-2">
+          <i class="fa-solid fa-box-archive"></i> Construir Paquete PDF Único
         </button>
       </div>
     </section>
 
-    <!-- Estado y Progreso -->
-    <section id="statusCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-      <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-        <i class="fa-solid fa-spinner text-indigo-600 animate-spin" id="spinner"></i> Estado del Proceso
-      </h2>
-      <p id="statusMessage" class="text-sm text-slate-600">Cargando base de datos...</p>
-      
-      <!-- Barra de Progreso -->
-      <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-        <div id="progressBar" class="bg-indigo-600 h-3 w-0 transition-all duration-300"></div>
+    <!-- Consola de Progreso y Registro -->
+    <section id="statusCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-3">
+      <div class="flex items-center gap-2 text-slate-800 font-semibold text-sm">
+        <i class="fa-solid fa-circle-notch animate-spin text-indigo-600" id="spinnerIcon"></i>
+        <span id="statusTitle">Procesando...</span>
       </div>
-      <div id="logContainer" class="bg-slate-900 text-green-400 p-4 rounded-lg text-xs font-mono h-40 overflow-y-auto space-y-1">
-        <div>> Sistema listo. Esperando inicio...</div>
+      <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+        <div id="progressBar" class="bg-indigo-600 h-2.5 w-0 transition-all duration-200"></div>
       </div>
+      <div id="logBox" class="bg-slate-900 text-emerald-400 p-3 rounded-lg text-xs font-mono h-32 overflow-y-auto space-y-1"></div>
     </section>
 
   </main>
 
-  <!-- Lógica JavaScript -->
   <script>
+    let datosProcesados = [];
+
     const log = (msg) => {
-      const container = document.getElementById('logContainer');
-      const entry = document.createElement('div');
-      entry.textContent = `> ${msg}`;
-      container.appendChild(entry);
-      container.scrollTop = container.scrollHeight;
+      const box = document.getElementById('logBox');
+      const div = document.createElement('div');
+      div.textContent = `> ${msg}`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
     };
 
-    const updateStatus = (msg, percent) => {
-      document.getElementById('statusMessage').textContent = msg;
-      document.getElementById('progressBar').style.width = `${percent}%`;
-      log(msg);
-    };
+    function limpiarTexto(txt) {
+      if (!txt) return '';
+      return txt.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x00-\x7F]/g, "");
+    }
 
-    async function procesarRegistros() {
+    // --- ALGORITMO DE TRANSFORMACIÓN DE ENLACES ---
+    function convertirAEnlaceDirecto(url) {
+      if (!url) return '';
+      let urlLimpia = url.trim();
+
+      // 1. Google Drive
+      if (urlLimpia.includes('drive.google.com')) {
+        const matches = urlLimpia.match(/\/d\/([a-zA-Z0-9_-]+)/) || urlLimpia.match(/id=([a-zA-Z0-9_-]+)/);
+        if (matches && matches[1]) {
+          return `https://drive.google.com/uc?export=download&id=${matches[1]}`;
+        }
+      }
+
+      // 2. OneDrive / SharePoint
+      if (urlLimpia.includes('sharepoint.com') || urlLimpia.includes('onedrive.live.com')) {
+        if (!urlLimpia.includes('download=1')) {
+          return urlLimpia.includes('?') ? `${urlLimpia}&download=1` : `${urlLimpia}?download=1`;
+        }
+      }
+
+      // 3. Dropbox
+      if (urlLimpia.includes('dropbox.com')) {
+        return urlLimpia.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+      }
+
+      return urlLimpia;
+    }
+
+    // PASO 1: Transformar URLs
+    async function transformarURLs() {
       const urlInput = document.getElementById('dbUrl').value.trim();
       const fileInput = document.getElementById('dbFile').files[0];
 
       if (!urlInput && !fileInput) {
-        alert('Por favor, ingresa un enlace a la base de datos o sube un archivo Excel/CSV.');
+        alert('Por favor sube un archivo Excel/CSV o ingresa un enlace a la tabla.');
         return;
       }
 
       document.getElementById('statusCard').classList.remove('hidden');
-      updateStatus('Leyendo base de datos...', 5);
+      log('Leyendo datos de la base de datos...');
 
       try {
-        let rows = [];
+        let rawData = [];
         if (fileInput) {
-          rows = await parseLocalFile(fileInput);
+          rawData = await parseLocalFile(fileInput);
         } else {
-          rows = await fetchRemoteData(urlInput);
+          const res = await fetch(urlInput);
+          const text = await res.text();
+          rawData = await new Promise(r => Papa.parse(text, { header: true, complete: res => r(res.data) }));
         }
 
-        if (!rows || rows.length === 0) {
-          throw new Error('No se encontraron registros validos en la base de datos.');
-        }
+        datosProcesados = rawData.map((reg, idx) => {
+          const urlOriginal = reg.URL || reg.Url || reg.Documento || reg.Carta || '';
+          return {
+            id: limpiarTexto(reg.ID || reg.id || `REG-${idx+1}`),
+            remitente: limpiarTexto(`${reg.Nombre_Remitente || reg.Remitente || ''} ${reg.Apellido_Remitente || ''}`).trim(),
+            destinatario: limpiarTexto(`${reg.Nombre_Destinatario || reg.Destinatario || ''} ${reg.Apellido_Destinatario || ''}`).trim(),
+            urlOriginal: urlOriginal,
+            urlDirecta: convertirAEnlaceDirecto(urlOriginal)
+          };
+        });
 
-        log(`Se encontraron ${rows.length} registros para procesar.`);
-        await generarPDFConsolidado(rows);
+        renderTablaPreview(datosProcesados);
+        
+        // Habilitar Paso 2
+        document.getElementById('sectionStep2').classList.remove('opacity-50', 'pointer-events-none');
+        document.getElementById('badgeStep1').classList.remove('hidden');
+        log(`Transformación completada: ${datosProcesados.length} URLs analizadas.`);
+        document.getElementById('statusTitle').textContent = "Paso 1 Completado: URLs Listas.";
+        document.getElementById('spinnerIcon').className = "fa-solid fa-circle-check text-emerald-500";
 
       } catch (err) {
+        alert(`Error al procesar la tabla: ${err.message}`);
         log(`ERROR: ${err.message}`);
-        document.getElementById('spinner').classList.remove('animate-spin');
-        document.getElementById('spinner').classList.add('text-red-500');
-        alert(`Ocurrió un error: ${err.message}`);
       }
     }
 
-    // Parsear archivo local (Excel / CSV)
+    function renderTablaPreview(datos) {
+      const tbody = document.getElementById('previewBody');
+      tbody.innerHTML = '';
+      datos.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-200 hover:bg-slate-100";
+        tr.innerHTML = `
+          <td class="p-2 font-bold">${d.id}</td>
+          <td class="p-2">${d.remitente}</td>
+          <td class="p-2">${d.destinatario}</td>
+          <td class="p-2 text-slate-400 truncate max-w-[150px]">${d.urlOriginal}</td>
+          <td class="p-2 text-indigo-600 font-semibold truncate max-w-[200px]"><a href="${d.urlDirecta}" target="_blank">${d.urlDirecta}</a></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('previewContainer').classList.remove('hidden');
+    }
+
+    function exportarExcelCorregido() {
+      const ws = XLSX.utils.json_to_sheet(datosProcesados);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Base_Datos_URLs_Directas");
+      XLSX.writeFile(wb, `Base_Datos_URLs_Directas_${Date.now()}.xlsx`);
+    }
+
     function parseLocalFile(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.SheetNames[0];
-          const json = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-          resolve(json);
+          const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]));
         };
         reader.onerror = reject;
         reader.readAsArrayBuffer(file);
       });
     }
 
-    // Fetch datos desde enlace
-    async function fetchRemoteData(url) {
-      const res = await fetch(url);
-      const text = await res.text();
-      return new Promise((resolve) => {
-        Papa.parse(text, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => resolve(results.data)
-        });
-      });
-    }
+    // PASO 2: Generar PDF Consolidado
+    async function construirPaquetePDF() {
+      if (datosProcesados.length === 0) return;
 
-    // Generar PDF Unificado
-    async function generarPDFConsolidado(registros) {
+      document.getElementById('statusTitle').textContent = "Construyendo Paquete PDF Consolidado...";
+      document.getElementById('spinnerIcon').className = "fa-solid fa-circle-notch animate-spin text-indigo-600";
+      
       const { PDFDocument, rgb, StandardFonts } = PDFLib;
       const pdfMaestro = await PDFDocument.create();
       const font = await pdfMaestro.embedFont(StandardFonts.HelveticaBold);
       const fontRegular = await pdfMaestro.embedFont(StandardFonts.Helvetica);
 
-      const total = registros.length;
+      const total = datosProcesados.length;
 
       for (let i = 0; i < total; i++) {
-        const reg = registros[i];
-        const stepPercent = Math.round(((i + 1) / total) * 90);
-        
-        // Mapeo flexible de columnas
-        const id = reg.ID || reg.id || reg.Registro || `REG-${i+1}`;
-        const remNombre = reg.Nombre_Remitente || reg.Remitente_Nombre || reg.Remitente || '';
-        const remApellido = reg.Apellido_Remitente || reg.Remitente_Apellido || '';
-        const destNombre = reg.Nombre_Destinatario || reg.Destinatario_Nombre || reg.Destinatario || '';
-        const destApellido = reg.Apellido_Destinatario || reg.Destinatario_Apellido || '';
-        const urlDoc = reg.URL || reg.Url || reg.Documento || reg.Carta || '';
+        const d = datosProcesados[i];
+        const percent = Math.round(((i + 1) / total) * 100);
+        document.getElementById('progressBar').style.width = `${percent}%`;
+        log(`Descargando y uniendo carta ${i+1}/${total}: ID ${d.id}`);
 
-        const remitente = `${remNombre} ${remApellido}`.trim();
-        const destinatario = `${destNombre} ${destApellido}`.trim();
-
-        updateStatus(`Procesando registro ${i + 1} de ${total}: ID ${id}`, stepPercent);
-
-        if (!urlDoc) {
-          log(`Advertencia: Registro ID ${id} no tiene URL de carta. Omitiendo...`);
-          continue;
-        }
+        if (!d.urlDirecta) continue;
 
         try {
-          const res = await fetch(urlDoc);
-          const blob = await res.blob();
-          const buffer = await blob.arrayBuffer();
+          // Intento de descarga con Proxy CORS para asegurar acceso abierto
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(d.urlDirecta)}`;
+          let res = await fetch(proxyUrl);
+          if (!res.ok) res = await fetch(d.urlDirecta); // fallback
+
+          if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+          const buffer = await res.arrayBuffer();
           const contentType = res.headers.get('content-type') || '';
 
-          if (urlDoc.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')) {
-            // Documento PDF
+          if (d.urlDirecta.toLowerCase().includes('.pdf') || contentType.includes('pdf')) {
             const pdfDoc = await PDFDocument.load(buffer);
             const copiedPages = await pdfMaestro.copyPages(pdfDoc, pdfDoc.getPageIndices());
-            
-            copiedPages.forEach((page) => {
-              // Estampar Encabezado en cada página del PDF
+
+            copiedPages.forEach(page => {
               const { width, height } = page.getSize();
-              page.drawRectangle({
-                x: 0, y: height - 40, width: width, height: 40,
-                color: rgb(0.95, 0.95, 0.98)
-              });
-              page.drawText(`ID REGISTRO: ${id} | REMITENTE: ${remitente} | DESTINATARIO: ${destinatario}`, {
+              // Encabezado de Identificación por hoja
+              page.drawRectangle({ x: 0, y: height - 40, width: width, height: 40, color: rgb(0.93, 0.93, 0.95) });
+              page.drawText(`ID: ${d.id} | REMITENTE: ${d.remitente} | DESTINATARIO: ${d.destinatario}`, {
                 x: 15, y: height - 25, size: 9, font: font, color: rgb(0.1, 0.1, 0.3)
               });
               pdfMaestro.addPage(page);
             });
 
-          } else if (urlDoc.toLowerCase().match(/\.(jpg|jpeg|png)$/) || contentType.includes('image')) {
-            // Imagen JPG/PNG
-            const page = pdfMaestro.addPage([612, 792]); // Tamaño Carta Estándar
-            let img;
-            if (urlDoc.toLowerCase().includes('.png') || contentType.includes('png')) {
-              img = await pdfMaestro.embedPng(buffer);
-            } else {
-              img = await pdfMaestro.embedJpg(buffer);
-            }
+          } else if (d.urlDirecta.toLowerCase().match(/\.(jpg|jpeg|png)$/) || contentType.includes('image')) {
+            const page = pdfMaestro.addPage([612, 792]);
+            const img = d.urlDirecta.toLowerCase().includes('.png') || contentType.includes('png')
+              ? await pdfMaestro.embedPng(buffer)
+              : await pdfMaestro.embedJpg(buffer);
 
-            // Dibujar Encabezado
-            page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.95, 0.95, 0.98) });
-            page.drawText(`ID REGISTRO: ${id} | REMITENTE: ${remitente} | DESTINATARIO: ${destinatario}`, {
+            page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.93, 0.93, 0.95) });
+            page.drawText(`ID: ${d.id} | REMITENTE: ${d.remitente} | DESTINATARIO: ${d.destinatario}`, {
               x: 15, y: 767, size: 9, font: font, color: rgb(0.1, 0.1, 0.3)
             });
 
-            // Ajustar imagen en la página
             const imgDims = img.scaleToFit(582, 720);
-            page.drawImage(img, {
-              x: 15, y: 740 - imgDims.height,
-              width: imgDims.width, height: imgDims.height
-            });
+            page.drawImage(img, { x: 15, y: 740 - imgDims.height, width: imgDims.width, height: imgDims.height });
 
           } else {
-            // Documento Word (.docx) o no soportado nativamente -> Portada de Referencia
+            // Portada para Word u otros
             const page = pdfMaestro.addPage([612, 792]);
-            page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.95, 0.95, 0.98) });
-            page.drawText(`ID REGISTRO: ${id} | REMITENTE: ${remitente} | DESTINATARIO: ${destinatario}`, {
+            page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.93, 0.93, 0.95) });
+            page.drawText(`ID: ${d.id} | REMITENTE: ${d.remitente} | DESTINATARIO: ${d.destinatario}`, {
               x: 15, y: 767, size: 9, font: font, color: rgb(0.1, 0.1, 0.3)
             });
-
-            page.drawText('Documento Word Adjunto', { x: 50, y: 650, size: 18, font: font, color: rgb(0.2, 0.2, 0.2) });
-            page.drawText(`El documento asignado a este registro es un archivo Word (.docx).`, { x: 50, y: 610, size: 11, font: fontRegular });
-            page.drawText(`Enlace directo al documento: ${urlDoc}`, { x: 50, y: 590, size: 10, font: fontRegular, color: rgb(0, 0, 0.8) });
+            page.drawText('Documento Word / Adjunto Externo', { x: 50, y: 650, size: 14, font: font });
+            page.drawText(`Acceso directo al documento: ${d.urlDirecta}`, { x: 50, y: 610, size: 9, font: fontRegular, color: rgb(0,0,0.8) });
           }
 
-        } catch (fileErr) {
-          log(`Error descargando o uniendo archivo ID ${id}: ${fileErr.message}`);
+        } catch (e) {
+          log(`Fallo al descargar ID ${d.id}: ${e.message}`);
+          const pageErr = pdfMaestro.addPage([612, 792]);
+          pageErr.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(1, 0.9, 0.9) });
+          pageErr.drawText(`ID: ${d.id} | REMITENTE: ${d.remitente} | DESTINATARIO: ${d.destinatario}`, {
+            x: 15, y: 767, size: 9, font: font, color: rgb(0.6, 0, 0)
+          });
+          pageErr.drawText(`No se pudo descargar automáticamente el archivo.`, { x: 50, y: 650, size: 12, font: font, color: rgb(0.8, 0, 0) });
+          pageErr.drawText(`Enlace intentado: ${d.urlDirecta}`, { x: 50, y: 620, size: 9, font: fontRegular });
         }
       }
 
-      updateStatus('Compilando paquete PDF unificado final...', 95);
+      log('Compilando paquete PDF final...');
       const pdfBytes = await pdfMaestro.save();
-
-      // Disparar Descarga
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `Paquete_Cartas_Unificadas_${Date.now()}.pdf`;
+      link.download = `Paquete_Consolidado_Final_${Date.now()}.pdf`;
       link.click();
 
-      updateStatus('¡Proceso completado con éxito! Se ha descargado el paquete.', 100);
-      document.getElementById('spinner').classList.remove('animate-spin');
-      document.getElementById('spinner').classList.add('text-green-500');
+      document.getElementById('statusTitle').textContent = "¡Paquete PDF Generado y Descargado!";
+      document.getElementById('spinnerIcon').className = "fa-solid fa-circle-check text-emerald-500";
     }
   </script>
 </body>
