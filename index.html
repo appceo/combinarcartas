@@ -18,7 +18,7 @@
         <i class="fa-solid fa-file-pdf text-2xl text-indigo-300"></i>
         <div>
           <h1 class="text-xl font-bold">Consolidador de Cartas y PDF</h1>
-          <p class="text-xs text-indigo-200">Motor Optimizado con Descarga Garantizada</p>
+          <p class="text-xs text-indigo-200">Soporte Multicolumna para Remitente y Destinatario</p>
         </div>
       </div>
     </div>
@@ -58,27 +58,30 @@
 
     <!-- PASO 1.5: Mapeo Manual -->
     <section id="sectionMapping" class="hidden bg-white rounded-xl shadow-sm border border-amber-300 bg-amber-50/30 p-6 space-y-4">
-      <div class="flex items-center gap-2 text-amber-900 font-semibold border-b border-amber-200 pb-2">
-        <i class="fa-solid fa-sliders text-amber-600"></i>
-        <span>Confirmar Mapeo de Columnas</span>
+      <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+        <div class="flex items-center gap-2 text-amber-900 font-semibold">
+          <i class="fa-solid fa-sliders text-amber-600"></i>
+          <span>Confirmar Mapeo de Columnas</span>
+        </div>
+        <span class="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">Nota: Mantén presionado Ctrl / Cmd para seleccionar múltiples columnas (ej. Nombre + Apellido)</span>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">ID / Registro:</label>
-          <select id="selectColId" class="w-full p-2 border border-slate-300 rounded bg-white text-xs"></select>
+          <select id="selectColId" class="w-full p-2 border border-slate-300 rounded bg-white text-xs h-28" multiple></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Remitente:</label>
-          <select id="selectColRemitente" class="w-full p-2 border border-slate-300 rounded bg-white text-xs"></select>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Remitente (Nombres/Apellidos):</label>
+          <select id="selectColRemitente" class="w-full p-2 border border-slate-300 rounded bg-white text-xs h-28" multiple></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Destinatario:</label>
-          <select id="selectColDestinatario" class="w-full p-2 border border-slate-300 rounded bg-white text-xs"></select>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Destinatario (Nombres/Apellidos):</label>
+          <select id="selectColDestinatario" class="w-full p-2 border border-slate-300 rounded bg-white text-xs h-28" multiple></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1 text-indigo-700">URL del PDF (*):</label>
-          <select id="selectColUrl" class="w-full p-2 border-2 border-indigo-500 rounded bg-white text-xs font-semibold text-indigo-900"></select>
+          <label class="block text-xs font-bold text-indigo-700 mb-1">URL / Link del PDF (*):</label>
+          <select id="selectColUrl" class="w-full p-2 border-2 border-indigo-500 rounded bg-white text-xs font-semibold text-indigo-900 h-28"></select>
         </div>
       </div>
 
@@ -94,14 +97,14 @@
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-slate-700">Vista previa (<span id="totalRows">0</span> registros):</h3>
       </div>
-      <div class="max-h-56 overflow-y-auto border border-slate-200 rounded-lg text-xs font-mono bg-slate-50">
+      <div class="max-h-64 overflow-y-auto border border-slate-200 rounded-lg text-xs font-mono bg-slate-50">
         <table class="w-full text-left border-collapse" id="previewTable">
           <thead class="bg-slate-200 text-slate-700 sticky top-0">
             <tr>
               <th class="p-2 border-b">#</th>
               <th class="p-2 border-b">ID</th>
-              <th class="p-2 border-b">Remitente</th>
-              <th class="p-2 border-b">Destinatario</th>
+              <th class="p-2 border-b">Remitente Construido</th>
+              <th class="p-2 border-b">Destinatario Construido</th>
               <th class="p-2 border-b">URL Detectada</th>
             </tr>
           </thead>
@@ -139,7 +142,7 @@
 
       <div id="logBox" class="bg-slate-900 text-emerald-400 p-3 rounded-lg text-xs font-mono h-40 overflow-y-auto space-y-1"></div>
 
-      <!-- BOTÓN DE DESCARGA DIRECTA (APARECE AL FINALIZAR) -->
+      <!-- BOTÓN DE DESCARGA DIRECTA -->
       <div id="downloadArea" class="hidden bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
         <div>
           <h4 class="font-bold text-emerald-900 text-sm">¡Documento Consolidado Listo!</h4>
@@ -276,30 +279,55 @@
         });
       });
 
-      cols.forEach(c => {
+      // Auto-detección inteligente
+      const selRem = document.getElementById('selectColRemitente');
+      const selDest = document.getElementById('selectColDestinatario');
+      const selId = document.getElementById('selectColId');
+      const selUrl = document.getElementById('selectColUrl');
+
+      cols.forEach((c, idx) => {
         const lower = c.toLowerCase();
-        if (lower.includes('id') || lower.includes('num') || lower.includes('registro')) document.getElementById('selectColId').value = c;
-        if (lower.includes('remitente') || lower.includes('de') || lower.includes('envia')) document.getElementById('selectColRemitente').value = c;
-        if (lower.includes('destinatario') || lower.includes('para')) document.getElementById('selectColDestinatario').value = c;
+        
+        if (lower.includes('id') || lower.includes('num') || lower.includes('registro')) {
+          selId.options[idx].selected = true;
+        }
+        if (lower.includes('remitente') || lower.includes('envia') || lower.includes('nombre_rem') || lower.includes('apellido_rem')) {
+          selRem.options[idx].selected = true;
+        }
+        if (lower.includes('destinatario') || lower.includes('para') || lower.includes('nombre_dest') || lower.includes('apellido_dest')) {
+          selDest.options[idx].selected = true;
+        }
         if (lower.includes('url') || lower.includes('link') || lower.includes('enlace') || lower.includes('carta') || lower.includes('drive')) {
-          document.getElementById('selectColUrl').value = c;
+          selUrl.value = c;
         }
       });
     }
 
+    function obtenerValoresColumnasSeleccionadas(registro, selectId) {
+      const select = document.getElementById(selectId);
+      const seleccionados = Array.from(select.selectedOptions).map(opt => opt.value);
+      
+      const valores = seleccionados
+        .map(col => registro[col] ? registro[col].toString().trim() : '')
+        .filter(val => val !== '');
+
+      return valores.join(' ');
+    }
+
     function aplicarMapeoYVistaPrevia() {
-      const colId = document.getElementById('selectColId').value;
-      const colRemitente = document.getElementById('selectColRemitente').value;
-      const colDestinatario = document.getElementById('selectColDestinatario').value;
       const colUrl = document.getElementById('selectColUrl').value;
 
       datosProcesados = rawExcelData.map((reg, idx) => {
         const valUrl = reg[colUrl] ? reg[colUrl].toString().trim() : '';
+        const idTexto = obtenerValoresColumnasSeleccionadas(reg, 'selectColId') || `REG-${idx + 1}`;
+        const remitenteTexto = obtenerValoresColumnasSeleccionadas(reg, 'selectColRemitente') || 'Sin Remitente';
+        const destinatarioTexto = obtenerValoresColumnasSeleccionadas(reg, 'selectColDestinatario') || 'Sin Destinatario';
+
         return {
           index: idx + 1,
-          id: reg[colId] ? reg[colId].toString().trim() : `REG-${idx + 1}`,
-          remitente: reg[colRemitente] ? reg[colRemitente].toString().trim() : 'Sin Remitente',
-          destinatario: reg[colDestinatario] ? reg[colDestinatario].toString().trim() : 'Sin Destinatario',
+          id: idTexto,
+          remitente: remitenteTexto,
+          destinatario: destinatarioTexto,
           urlOriginal: valUrl,
           urlDirecta: normalizarURL(valUrl)
         };
@@ -328,7 +356,7 @@
           <td class="p-2 font-medium text-slate-800">${d.destinatario}</td>
           <td class="p-2 ${esUrlValida ? 'text-indigo-600 font-semibold' : 'text-red-600 font-bold'}">
             ${esUrlValida 
-              ? `<a href="${d.urlDirecta}" target="_blank" class="underline">${d.urlDirecta.substring(0, 40)}...</a>` 
+              ? `<a href="${d.urlDirecta}" target="_blank" class="underline">${d.urlDirecta.substring(0, 35)}...</a>` 
               : `⚠️ URL Inválida: "${d.urlOriginal}"`}
           </td>
         `;
@@ -434,10 +462,10 @@
         document.getElementById('spinnerIcon').className = "fa-solid fa-circle-check text-emerald-500 text-xl";
         document.getElementById('downloadArea').classList.remove('hidden');
 
-        log('¡LISTO! Haz clic en el botón verde arriba para guardar tu archivo.');
+        log('¡LISTO! Haz clic en el botón verde arriba para descargar tu paquete.');
       } catch (errSave) {
-        log(`ERROR CRÍTICO AL GUARDAR: El archivo es demasiado grande para la memoria del navegador. Intenta procesar en grupos más pequeños.`);
-        alert('Error de memoria al compilar un archivo tan grande. Intenta procesar un número menor de registros.');
+        log(`ERROR CRÍTICO AL GUARDAR: El archivo sobrepasa la memoria del navegador. Intenta procesar un lote menor.`);
+        alert('Error de memoria al compilar el PDF. Intenta con menos registros.');
       }
     }
 
