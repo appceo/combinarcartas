@@ -18,7 +18,7 @@
         <i class="fa-solid fa-file-pdf text-2xl text-indigo-300"></i>
         <div>
           <h1 class="text-xl font-bold">Consolidador de Cartas y PDF</h1>
-          <p class="text-xs text-indigo-200">Mapeo dinámico de columnas y descarga directa sin bloqueo CORS</p>
+          <p class="text-xs text-indigo-200">Motor Optimizado con Descarga Garantizada</p>
         </div>
       </div>
     </div>
@@ -56,29 +56,28 @@
       </div>
     </section>
 
-    <!-- PASO 1.5: Selector y Mapeo Manual de Columnas -->
+    <!-- PASO 1.5: Mapeo Manual -->
     <section id="sectionMapping" class="hidden bg-white rounded-xl shadow-sm border border-amber-300 bg-amber-50/30 p-6 space-y-4">
       <div class="flex items-center gap-2 text-amber-900 font-semibold border-b border-amber-200 pb-2">
         <i class="fa-solid fa-sliders text-amber-600"></i>
-        <span>Confirmar Selección de Columnas (Mapeo de Datos)</span>
+        <span>Confirmar Mapeo de Columnas</span>
       </div>
-      <p class="text-xs text-slate-600">Verifica que cada desplegable coincida exactamente con la columna correspondiente de tu archivo Excel/CSV:</p>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Columna ID / Registro:</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">ID / Registro:</label>
           <select id="selectColId" class="w-full p-2 border border-slate-300 rounded bg-white text-xs"></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Columna Remitente:</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Remitente:</label>
           <select id="selectColRemitente" class="w-full p-2 border border-slate-300 rounded bg-white text-xs"></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Columna Destinatario:</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Destinatario:</label>
           <select id="selectColDestinatario" class="w-full p-2 border border-slate-300 rounded bg-white text-xs"></select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1 text-indigo-700">Columna URL del Documento / PDF (*):</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1 text-indigo-700">URL del PDF (*):</label>
           <select id="selectColUrl" class="w-full p-2 border-2 border-indigo-500 rounded bg-white text-xs font-semibold text-indigo-900"></select>
         </div>
       </div>
@@ -93,7 +92,7 @@
     <!-- Vista previa -->
     <section id="previewContainer" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-3">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-slate-700">Vista previa (<span id="totalRows">0</span> registros mapeados):</h3>
+        <h3 class="text-sm font-semibold text-slate-700">Vista previa (<span id="totalRows">0</span> registros):</h3>
       </div>
       <div class="max-h-56 overflow-y-auto border border-slate-200 rounded-lg text-xs font-mono bg-slate-50">
         <table class="w-full text-left border-collapse" id="previewTable">
@@ -122,21 +121,34 @@
 
       <div class="flex justify-end">
         <button id="btnBuildPackage" onclick="construirPaquetePDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-lg shadow transition flex items-center gap-2">
-          <i class="fa-solid fa-box-archive"></i> Descargar PDF Consolidado
+          <i class="fa-solid fa-box-archive"></i> Procesar y Crear PDF Consolidado
         </button>
       </div>
     </section>
 
-    <!-- Progreso -->
-    <section id="statusCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-3">
+    <!-- Estado y Descarga Garantizada -->
+    <section id="statusCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
       <div class="flex items-center gap-2 text-slate-800 font-semibold text-sm">
         <i class="fa-solid fa-circle-notch animate-spin text-indigo-600" id="spinnerIcon"></i>
         <span id="statusTitle">Procesando...</span>
       </div>
+
       <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
         <div id="progressBar" class="bg-indigo-600 h-2.5 w-0 transition-all duration-200"></div>
       </div>
+
       <div id="logBox" class="bg-slate-900 text-emerald-400 p-3 rounded-lg text-xs font-mono h-40 overflow-y-auto space-y-1"></div>
+
+      <!-- BOTÓN DE DESCARGA DIRECTA (APARECE AL FINALIZAR) -->
+      <div id="downloadArea" class="hidden bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <h4 class="font-bold text-emerald-900 text-sm">¡Documento Consolidado Listo!</h4>
+          <p class="text-xs text-emerald-700">El archivo ha sido generado exitosamente en la memoria.</p>
+        </div>
+        <a id="downloadBtn" href="#" download="Paquete_PDF_Consolidado.pdf" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-lg shadow transition flex items-center gap-2 text-sm">
+          <i class="fa-solid fa-download text-lg"></i> DESCARGAR PAQUETE PDF
+        </a>
+      </div>
     </section>
 
   </main>
@@ -145,6 +157,7 @@
     let rawExcelData = [];
     let columnasDisponibles = [];
     let datosProcesados = [];
+    let currentPdfBlobUrl = null;
 
     const log = (msg) => {
       const box = document.getElementById('logBox');
@@ -166,9 +179,7 @@
       if (!url || typeof url !== 'string') return '';
       let u = url.trim();
 
-      if (!u.startsWith('http://') && !u.startsWith('https://')) {
-        return '';
-      }
+      if (!u.startsWith('http://') && !u.startsWith('https://')) return '';
 
       if (u.includes('drive.google.com') || u.includes('docs.google.com')) {
         const id = extraerIdGoogleDrive(u);
@@ -176,7 +187,6 @@
           return `https://drive.google.com/uc?export=download&confirm=no_antivirus&id=${id}`;
         }
       }
-
       return u;
     }
 
@@ -208,15 +218,11 @@
 
           if (res.ok) {
             const buf = await res.arrayBuffer();
-            if (buf && buf.byteLength > 200) {
-              return buf;
-            }
+            if (buf && buf.byteLength > 200) return buf;
           }
-        } catch (e) {
-          // Intenta con la siguiente URL del arreglo
-        }
+        } catch (e) {}
       }
-      throw new Error("No se pudo descargar el archivo. Verifica los permisos de acceso público del documento.");
+      throw new Error("No se pudo obtener el archivo mediante proxies.");
     }
 
     async function cargarBaseDatos() {
@@ -229,7 +235,7 @@
       }
 
       document.getElementById('statusCard').classList.remove('hidden');
-      log("Leyendo estructura de la base de datos...");
+      log("Leyendo base de datos...");
 
       try {
         if (fileInput) {
@@ -242,14 +248,14 @@
         }
 
         if (!rawExcelData || rawExcelData.length === 0) {
-          throw new Error("El archivo no contiene registros.");
+          throw new Error("No se encontraron registros.");
         }
 
         columnasDisponibles = Object.keys(rawExcelData[0]);
         poblarSelectores(columnasDisponibles);
 
         document.getElementById('sectionMapping').classList.remove('hidden');
-        log(`Se detectaron ${columnasDisponibles.length} columnas y ${rawExcelData.length} filas. Por favor confirma la columna correspondiente a la URL.`);
+        log(`Se detectaron ${rawExcelData.length} registros y ${columnasDisponibles.length} columnas.`);
 
       } catch (err) {
         alert(`Error al leer archivo: ${err.message}`);
@@ -259,7 +265,6 @@
 
     function poblarSelectores(cols) {
       const selects = ['selectColId', 'selectColRemitente', 'selectColDestinatario', 'selectColUrl'];
-      
       selects.forEach(id => {
         const sel = document.getElementById(id);
         sel.innerHTML = '';
@@ -271,7 +276,6 @@
         });
       });
 
-      // Intentar auto-seleccionar por palabras clave comunes
       cols.forEach(c => {
         const lower = c.toLowerCase();
         if (lower.includes('id') || lower.includes('num') || lower.includes('registro')) document.getElementById('selectColId').value = c;
@@ -304,7 +308,7 @@
       renderTablaPreview(datosProcesados);
       document.getElementById('sectionStep2').classList.remove('opacity-50', 'pointer-events-none');
       document.getElementById('badgeStep1').classList.remove('hidden');
-      log("Mapeo aplicado correctamente.");
+      log("Mapeo confirmado.");
     }
 
     function renderTablaPreview(datos) {
@@ -315,7 +319,6 @@
       datos.forEach(d => {
         const tr = document.createElement('tr');
         tr.className = "border-b border-slate-200 hover:bg-slate-100";
-        
         const esUrlValida = d.urlDirecta !== '';
 
         tr.innerHTML = `
@@ -325,7 +328,7 @@
           <td class="p-2 font-medium text-slate-800">${d.destinatario}</td>
           <td class="p-2 ${esUrlValida ? 'text-indigo-600 font-semibold' : 'text-red-600 font-bold'}">
             ${esUrlValida 
-              ? `<a href="${d.urlDirecta}" target="_blank" class="underline">${d.urlDirecta.substring(0, 45)}...</a>` 
+              ? `<a href="${d.urlDirecta}" target="_blank" class="underline">${d.urlDirecta.substring(0, 40)}...</a>` 
               : `⚠️ URL Inválida: "${d.urlOriginal}"`}
           </td>
         `;
@@ -350,7 +353,9 @@
       if (datosProcesados.length === 0) return;
 
       document.getElementById('statusCard').classList.remove('hidden');
+      document.getElementById('downloadArea').classList.add('hidden');
       document.getElementById('statusTitle').textContent = `Generando paquete PDF...`;
+      document.getElementById('spinnerIcon').className = "fa-solid fa-circle-notch animate-spin text-indigo-600";
       
       const { PDFDocument, rgb, StandardFonts } = PDFLib;
       const pdfMaestro = await PDFDocument.create();
@@ -366,7 +371,7 @@
         log(`Procesando (${i+1}/${total}) - ID: ${d.id}`);
 
         if (!d.urlDirecta) {
-          agregarHojaError(pdfMaestro, d, `El campo de la URL no contiene un enlace válido (Se encontró: "${d.urlOriginal}")`, fontBold, fontRegular);
+          agregarHojaError(pdfMaestro, d, `URL inválida o ausente: "${d.urlOriginal}"`, fontBold, fontRegular);
           continue;
         }
 
@@ -374,7 +379,7 @@
           const buffer = await descargarConProxyCascada(d.urlDirecta);
 
           try {
-            const pdfDoc = await PDFDocument.load(buffer);
+            const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
             const copiedPages = await pdfMaestro.copyPages(pdfDoc, pdfDoc.getPageIndices());
 
             copiedPages.forEach(page => {
@@ -402,7 +407,7 @@
               page.drawImage(img, { x: 15, y: 740 - dims.height, width: dims.width, height: dims.height });
               continue;
             } catch (eImg) {
-              throw new Error("El archivo en la URL no es un PDF ni una imagen válida (JPG/PNG).");
+              throw new Error("El archivo no es un PDF ni una imagen válida.");
             }
           }
 
@@ -412,15 +417,28 @@
         }
       }
 
-      log('Guardando archivo PDF consolidado...');
-      const pdfBytes = await pdfMaestro.save();
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `Paquete_Consolidado_${Date.now()}.pdf`;
-      link.click();
+      log('Compilando paquete final...');
+      
+      try {
+        const pdfBytes = await pdfMaestro.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        
+        if (currentPdfBlobUrl) URL.revokeObjectURL(currentPdfBlobUrl);
+        currentPdfBlobUrl = URL.createObjectURL(blob);
 
-      document.getElementById('statusTitle').textContent = "¡PDF Consolidado Generado!";
+        const btnDownload = document.getElementById('downloadBtn');
+        btnDownload.href = currentPdfBlobUrl;
+        btnDownload.download = `Paquete_Consolidado_${Date.now()}.pdf`;
+
+        document.getElementById('statusTitle').textContent = "¡Paquete PDF generado con éxito!";
+        document.getElementById('spinnerIcon').className = "fa-solid fa-circle-check text-emerald-500 text-xl";
+        document.getElementById('downloadArea').classList.remove('hidden');
+
+        log('¡LISTO! Haz clic en el botón verde arriba para guardar tu archivo.');
+      } catch (errSave) {
+        log(`ERROR CRÍTICO AL GUARDAR: El archivo es demasiado grande para la memoria del navegador. Intenta procesar en grupos más pequeños.`);
+        alert('Error de memoria al compilar un archivo tan grande. Intenta procesar un número menor de registros.');
+      }
     }
 
     function agregarHojaError(pdfMaestro, datos, errorMsg, fontBold, fontRegular) {
