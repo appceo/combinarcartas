@@ -18,7 +18,7 @@
         <i class="fa-solid fa-wand-magic-sparkles text-2xl text-indigo-300"></i>
         <div>
           <h1 class="text-xl font-bold">Consolidador Universal de Cartas</h1>
-          <p class="text-xs text-indigo-200">Mapeo Completo Nombres/Apellidos y Procesamiento por Lotes</p>
+          <p class="text-xs text-indigo-200">Motor de Descarga Anti-CORS Optimizado</p>
         </div>
       </div>
     </div>
@@ -153,10 +153,12 @@
       return txt.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x00-\x7F]/g, "");
     }
 
+    // Convertidor Inteligente de URLs para Google Drive / Dropbox
     function convertirAEnlaceDirecto(url) {
       if (!url) return '';
       let u = url.trim();
 
+      // Google Spreadsheets CSV Export
       if (u.includes('docs.google.com/spreadsheets')) {
         const sheetId = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
         if (sheetId && sheetId[1]) {
@@ -164,13 +166,15 @@
         }
       }
 
+      // Google Drive Direct Download Link (PDFs / Img)
       if (u.includes('drive.google.com')) {
         const matches = u.match(/\/d\/([a-zA-Z0-9_-]+)/) || u.match(/id=([a-zA-Z0-9_-]+)/);
         if (matches && matches[1]) {
-          return `https://drive.google.com/uc?export=download&id=${matches[1]}`;
+          return `https://drive.google.com/uc?export=download&confirm=no_antivirus&id=${matches[1]}`;
         }
       }
 
+      // Dropbox Direct Link
       if (u.includes('dropbox.com')) {
         return u.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
       }
@@ -178,7 +182,33 @@
       return u;
     }
 
-    // Busca un campo por coincidencia exacta o parcial en el objeto de la fila
+    // Descarga robusta intentando con múltiples Proxies CORS
+    async function descargarConProxyCascada(urlDirecta) {
+      const proxies = [
+        (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+        (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+        (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
+        (u) => u // Intento directo
+      ];
+
+      for (let i = 0; i < proxies.length; i++) {
+        try {
+          const targetUrl = proxies[i](urlDirecta);
+          const res = await fetch(targetUrl);
+          if (res.ok) {
+            const buffer = await res.arrayBuffer();
+            if (buffer && buffer.byteLength > 0) {
+              return buffer;
+            }
+          }
+        } catch (err) {
+          // Si falla, continúa con el siguiente proxy en la lista
+        }
+      }
+
+      throw new Error("No se pudo obtener el archivo mediante ninguno de los proxies CORS.");
+    }
+
     function obtenerCampo(obj, patrones) {
       const keys = Object.keys(obj);
       for (let p of patrones) {
@@ -188,26 +218,19 @@
       return '';
     }
 
-    // Búsqueda Inteligente de Remitentes y Destinatarios (Soporta Nombres y Apellidos por separado o juntos)
     function extraerPersona(reg, tipo) {
       if (tipo === 'remitente') {
-        const nom = obtenerCampo(reg, ['nombreremitente', 'remitentenombre', 'nomremitente', 'primerremitente']);
+        const nom = obtenerCampo(reg, ['nombreremitente', 'remitentenombre', 'nomremitente']);
         const ape = obtenerCampo(reg, ['apellidoremitente', 'remitenteapellido', 'aperemitente']);
-        
         if (nom || ape) return `${nom} ${ape}`.trim();
-        
-        const completo = obtenerCampo(reg, ['remitente', 'de', 'quienenvia']);
-        return completo || 'Sin Remitente';
+        return obtenerCampo(reg, ['remitente', 'de', 'quienenvia']) || 'Sin Remitente';
       }
 
       if (tipo === 'destinatario') {
         const nom = obtenerCampo(reg, ['nombredestinatario', 'destinatarionombre', 'nomdestinatario']);
         const ape = obtenerCampo(reg, ['apellidodestinatario', 'destinatarioapellido', 'apedestinatario']);
-        
         if (nom || ape) return `${nom} ${ape}`.trim();
-        
-        const completo = obtenerCampo(reg, ['destinatario', 'para', 'a']);
-        return completo || 'Sin Destinatario';
+        return obtenerCampo(reg, ['destinatario', 'para', 'a']) || 'Sin Destinatario';
       }
 
       return '';
@@ -231,18 +254,14 @@
           rawData = await parseLocalFile(fileInput);
         } else {
           const csvUrl = convertirAEnlaceDirecto(urlInput);
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`;
-          log(`Descargando datos desde: ${csvUrl}`);
-          
-          let res = await fetch(proxyUrl);
-          if (!res.ok) res = await fetch(csvUrl);
-          
-          const text = await res.text();
+          log(`Descargando base de datos desde la fuente...`);
+          const buffer = await descargarConProxyCascada(csvUrl);
+          const text = new TextDecoder().decode(buffer);
           rawData = await new Promise(r => Papa.parse(text, { header: true, skipEmptyLines: true, complete: res => r(res.data) }));
         }
 
         if (!rawData || rawData.length === 0) {
-          throw new Error('No se encontraron registros en el archivo cargado.');
+          throw new Error('No se encontraron registros en la base de datos.');
         }
 
         datosProcesados = rawData.map((reg, idx) => {
@@ -263,7 +282,6 @@
 
         renderTablaPreview(datosProcesados);
         
-        // Configurar opciones de lote
         document.getElementById('lblTotalAll').textContent = datosProcesados.length;
         document.getElementById('lblMaxRange').textContent = datosProcesados.length;
         document.getElementById('rangeStart').value = 1;
@@ -329,11 +347,9 @@
       });
     }
 
-    // PASO 2: Construir el paquete PDF
     async function construirPaquetePDF() {
       if (datosProcesados.length === 0) return;
 
-      // Determinar qué registros procesar
       const mode = document.querySelector('input[name="modeProcess"]:checked').value;
       let lote = [];
 
@@ -374,22 +390,9 @@
         }
 
         try {
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(d.urlDirecta)}`;
-          let res = await fetch(proxyUrl);
-          
-          if (!res.ok) {
-            res = await fetch(d.urlDirecta);
-          }
+          const buffer = await descargarConProxyCascada(d.urlDirecta);
 
-          if (!res.ok) throw new Error(`Respuesta HTTP ${res.status}`);
-
-          const buffer = await res.arrayBuffer();
-
-          if (buffer.byteLength === 0) {
-            throw new Error("El archivo descargado está vacío o no tiene permisos de acceso público.");
-          }
-
-          // Cargar como PDF
+          // Intentar insertar como PDF
           try {
             const pdfDoc = await PDFDocument.load(buffer);
             const copiedPages = await pdfMaestro.copyPages(pdfDoc, pdfDoc.getPageIndices());
@@ -404,7 +407,7 @@
             });
             continue;
           } catch (ePDF) {
-            // Cargar como Imagen JPG/PNG
+            // Intentar insertar como Imagen (JPG/PNG)
             try {
               const page = pdfMaestro.addPage([612, 792]);
               let img;
@@ -423,7 +426,7 @@
               page.drawImage(img, { x: 15, y: 740 - dims.height, width: dims.width, height: dims.height });
               continue;
             } catch (eImg) {
-              throw new Error("El archivo no es un PDF válido ni una imagen JPG/PNG.");
+              throw new Error("El archivo no es un PDF válido o es de acceso privado.");
             }
           }
 
