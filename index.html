@@ -18,7 +18,7 @@
         <i class="fa-solid fa-wand-magic-sparkles text-2xl text-indigo-300"></i>
         <div>
           <h1 class="text-xl font-bold">Consolidador Universal de Cartas</h1>
-          <p class="text-xs text-indigo-200">Motor de Descarga Anti-CORS Optimizado</p>
+          <p class="text-xs text-indigo-200">Motor Ultra-Rápido con Timeout Dinámico y Redundancia CORS</p>
         </div>
       </div>
     </div>
@@ -66,8 +66,8 @@
               <tr>
                 <th class="p-2 border-b">#</th>
                 <th class="p-2 border-b">ID</th>
-                <th class="p-2 border-b">Remitente</th>
-                <th class="p-2 border-b">Destinatario</th>
+                <th class="p-2 border-b">Remitente Completo</th>
+                <th class="p-2 border-b">Destinatario Completo</th>
                 <th class="p-2 border-b">URL Original</th>
                 <th class="p-2 border-b">URL Directa Transformada</th>
               </tr>
@@ -153,12 +153,18 @@
       return txt.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x00-\x7F]/g, "");
     }
 
-    // Convertidor Inteligente de URLs para Google Drive / Dropbox
+    function extraerIdGoogleDrive(url) {
+      if (!url) return null;
+      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || 
+                url.match(/id=([a-zA-Z0-9_-]+)/) || 
+                url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : null;
+    }
+
     function convertirAEnlaceDirecto(url) {
       if (!url) return '';
       let u = url.trim();
 
-      // Google Spreadsheets CSV Export
       if (u.includes('docs.google.com/spreadsheets')) {
         const sheetId = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
         if (sheetId && sheetId[1]) {
@@ -166,15 +172,13 @@
         }
       }
 
-      // Google Drive Direct Download Link (PDFs / Img)
-      if (u.includes('drive.google.com')) {
-        const matches = u.match(/\/d\/([a-zA-Z0-9_-]+)/) || u.match(/id=([a-zA-Z0-9_-]+)/);
-        if (matches && matches[1]) {
-          return `https://drive.google.com/uc?export=download&confirm=no_antivirus&id=${matches[1]}`;
+      if (u.includes('drive.google.com') || u.includes('docs.google.com')) {
+        const id = extraerIdGoogleDrive(u);
+        if (id) {
+          return `https://drive.google.com/uc?export=download&confirm=no_antivirus&id=${id}`;
         }
       }
 
-      // Dropbox Direct Link
       if (u.includes('dropbox.com')) {
         return u.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
       }
@@ -182,55 +186,95 @@
       return u;
     }
 
-    // Descarga robusta intentando con múltiples Proxies CORS
-    async function descargarConProxyCascada(urlDirecta) {
-      const proxies = [
-        (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-        (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-        (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
-        (u) => u // Intento directo
-      ];
+    // Petición con TimeOut rápido para evitar ralentizaciones
+    async function fetchConTimeout(resource, options = {}, timeoutMs = 4500) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(resource, {
+          ...options,
+          signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+      } catch (error) {
+        clearTimeout(id);
+        throw error;
+      }
+    }
 
-      for (let i = 0; i < proxies.length; i++) {
+    // Descarga multicanal rápida
+    async function descargarConProxyCascada(urlDirecta) {
+      const gDriveId = extraerIdGoogleDrive(urlDirecta);
+
+      let urlsAProbar = [];
+      if (gDriveId) {
+        // Generar múltiples endpoints de descarga directa para Google Drive
+        urlsAProbar = [
+          `https://corsproxy.io/?${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${gDriveId}`)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${gDriveId}`)}`,
+          `https://corsproxy.io/?${encodeURIComponent(`https://docs.google.com/uc?export=download&id=${gDriveId}`)}`,
+          `https://drive.google.com/uc?export=download&confirm=no_antivirus&id=${gDriveId}`
+        ];
+      } else {
+        urlsAProbar = [
+          `https://corsproxy.io/?${encodeURIComponent(urlDirecta)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(urlDirecta)}`,
+          urlDirecta
+        ];
+      }
+
+      for (let i = 0; i < urlsAProbar.length; i++) {
         try {
-          const targetUrl = proxies[i](urlDirecta);
-          const res = await fetch(targetUrl);
+          const res = await fetchConTimeout(urlsAProbar[i], {}, 4500);
           if (res.ok) {
             const buffer = await res.arrayBuffer();
-            if (buffer && buffer.byteLength > 0) {
+            if (buffer && buffer.byteLength > 100) {
               return buffer;
             }
           }
         } catch (err) {
-          // Si falla, continúa con el siguiente proxy en la lista
+          // Si expira el tiempo o falla, pasa de inmediato al siguiente sin bloquear la UI
         }
       }
 
-      throw new Error("No se pudo obtener el archivo mediante ninguno de los proxies CORS.");
+      throw new Error("Acceso restringido por CORS o el archivo requiere permisos públicos de Google Drive.");
     }
 
     function obtenerCampo(obj, patrones) {
       const keys = Object.keys(obj);
       for (let p of patrones) {
-        const keyMatch = keys.find(k => k.toLowerCase().trim().replace(/_/g, '').includes(p));
+        const keyMatch = keys.find(k => k.toLowerCase().trim().replace(/_/g, '').replace(/\s+/g, '').includes(p));
         if (keyMatch && obj[keyMatch]) return obj[keyMatch].toString().trim();
       }
       return '';
     }
 
-    function extraerPersona(reg, tipo) {
+    function extraerPersonaCompleta(reg, tipo) {
       if (tipo === 'remitente') {
-        const nom = obtenerCampo(reg, ['nombreremitente', 'remitentenombre', 'nomremitente']);
-        const ape = obtenerCampo(reg, ['apellidoremitente', 'remitenteapellido', 'aperemitente']);
-        if (nom || ape) return `${nom} ${ape}`.trim();
-        return obtenerCampo(reg, ['remitente', 'de', 'quienenvia']) || 'Sin Remitente';
+        const nom1 = obtenerCampo(reg, ['primernombreremitente', 'nombreremitente1', 'nombreremitente', 'remitentenombre']);
+        const nom2 = obtenerCampo(reg, ['segundonombreremitente', 'nombreremitente2']);
+        const ape1 = obtenerCampo(reg, ['primerapellidoremitente', 'apellidoremitente1', 'apellidoremitente', 'remitenteapellido']);
+        const ape2 = obtenerCampo(reg, ['segundoapellidoremitente', 'apellidoremitente2']);
+
+        let partes = [nom1, nom2, ape1, ape2].filter(p => p.length > 0);
+        if (partes.length > 0) return partes.join(' ').replace(/\s+/g, ' ').trim();
+
+        const completo = obtenerCampo(reg, ['remitente', 'de', 'quienenvia', 'nombrecompletoremitente']);
+        return completo || 'Sin Remitente';
       }
 
       if (tipo === 'destinatario') {
-        const nom = obtenerCampo(reg, ['nombredestinatario', 'destinatarionombre', 'nomdestinatario']);
-        const ape = obtenerCampo(reg, ['apellidodestinatario', 'destinatarioapellido', 'apedestinatario']);
-        if (nom || ape) return `${nom} ${ape}`.trim();
-        return obtenerCampo(reg, ['destinatario', 'para', 'a']) || 'Sin Destinatario';
+        const nom1 = obtenerCampo(reg, ['primernombredestinatario', 'nombredestinatario1', 'nombredestinatario', 'destinatarionombre']);
+        const nom2 = obtenerCampo(reg, ['segundonombredestinatario', 'nombredestinatario2']);
+        const ape1 = obtenerCampo(reg, ['primerapellidodestinatario', 'apellidodestinatario1', 'apellidodestinatario', 'destinatarioapellido']);
+        const ape2 = obtenerCampo(reg, ['segundoapellidodestinatario', 'apellidodestinatario2']);
+
+        let partes = [nom1, nom2, ape1, ape2].filter(p => p.length > 0);
+        if (partes.length > 0) return partes.join(' ').replace(/\s+/g, ' ').trim();
+
+        const completo = obtenerCampo(reg, ['destinatario', 'para', 'a', 'nombrecompletodestinatario']);
+        return completo || 'Sin Destinatario';
       }
 
       return '';
@@ -266,8 +310,8 @@
 
         datosProcesados = rawData.map((reg, idx) => {
           const id = obtenerCampo(reg, ['id', 'registro', 'codigo', 'num']) || `REG-${idx+1}`;
-          const remitente = extraerPersona(reg, 'remitente');
-          const destinatario = extraerPersona(reg, 'destinatario');
+          const remitente = extraerPersonaCompleta(reg, 'remitente');
+          const destinatario = extraerPersonaCompleta(reg, 'destinatario');
           const urlOriginal = obtenerCampo(reg, ['url', 'link', 'documento', 'carta', 'enlace', 'http']);
 
           return {
@@ -323,8 +367,8 @@
         tr.innerHTML = `
           <td class="p-2 text-slate-400">${d.index}</td>
           <td class="p-2 font-bold">${d.id}</td>
-          <td class="p-2">${d.remitente}</td>
-          <td class="p-2">${d.destinatario}</td>
+          <td class="p-2 font-medium text-slate-800">${d.remitente}</td>
+          <td class="p-2 font-medium text-slate-800">${d.destinatario}</td>
           <td class="p-2 text-slate-400 truncate max-w-[150px]">${d.urlOriginal || 'Sin URL'}</td>
           <td class="p-2 text-indigo-600 font-semibold truncate max-w-[200px]">
             ${d.urlDirecta ? `<a href="${d.urlDirecta}" target="_blank" class="underline">${d.urlDirecta}</a>` : '<span class="text-red-500">Sin URL</span>'}
@@ -401,7 +445,7 @@
               const { width, height } = page.getSize();
               page.drawRectangle({ x: 0, y: height - 40, width: width, height: 40, color: rgb(0.93, 0.93, 0.95) });
               page.drawText(`ID: ${d.id} | REMITENTE: ${d.remitente} | DESTINATARIO: ${d.destinatario}`, {
-                x: 15, y: height - 25, size: 9, font: fontBold, color: rgb(0.1, 0.1, 0.3)
+                x: 15, y: height - 25, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
               });
               pdfMaestro.addPage(page);
             });
@@ -419,14 +463,14 @@
 
               page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.93, 0.93, 0.95) });
               page.drawText(`ID: ${d.id} | REMITENTE: ${d.remitente} | DESTINATARIO: ${d.destinatario}`, {
-                x: 15, y: 767, size: 9, font: fontBold, color: rgb(0.1, 0.1, 0.3)
+                x: 15, y: 767, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
               });
 
               const dims = img.scaleToFit(582, 720);
               page.drawImage(img, { x: 15, y: 740 - dims.height, width: dims.width, height: dims.height });
               continue;
             } catch (eImg) {
-              throw new Error("El archivo no es un PDF válido o es de acceso privado.");
+              throw new Error("El archivo no es un PDF/Imagen válido o requiere permisos públicos.");
             }
           }
 
@@ -454,7 +498,7 @@
       
       page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(1, 0.9, 0.9) });
       page.drawText(`ID: ${datos.id} | REMITENTE: ${datos.remitente} | DESTINATARIO: ${datos.destinatario}`, {
-        x: 15, y: 767, size: 9, font: fontBold, color: rgb(0.7, 0, 0)
+        x: 15, y: 767, size: 8, font: fontBold, color: rgb(0.7, 0.0, 0.0)
       });
 
       page.drawText('No se pudo procesar el documento adjunto', { x: 50, y: 680, size: 14, font: fontBold, color: rgb(0.8, 0, 0) });
