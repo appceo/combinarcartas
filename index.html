@@ -3,385 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consolidador Universal de Cartas</title>
-  
-  <!-- Librerías JS necesarias -->
+  <title>Consolidador de Cartas PDF</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-
   <style>
-    /* Estilos Nativos CSS Puros */
     :root {
       --primary: #4f46e5;
       --primary-hover: #4338ca;
-      --bg-main: #f1f5f9;
-      --card-bg: #ffffff;
+      --bg-slate: #f8fafc;
       --border-color: #e2e8f0;
       --text-main: #0f172a;
       --text-muted: #64748b;
-      --amber-bg: #fffbeb;
-      --amber-border: #fcd34d;
-      --emerald: #10b981;
-      --emerald-hover: #059669;
+      --success: #10b981;
+      --success-bg: #ecfdf5;
+      --danger: #ef4444;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      background-color: #1e1b4b;
-      color: #ffffff;
-      padding: 1.25rem 2rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-
-    .header-container {
-      max-width: 1100px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .header-title h1 {
-      font-size: 1.25rem;
-      font-weight: 700;
-    }
-
-    .header-title p {
-      font-size: 0.75rem;
-      color: #a5b4fc;
-      margin-top: 2px;
-    }
-
-    main {
-      max-width: 1100px;
-      width: 100%;
-      margin: 1.5rem auto;
-      padding: 0 1.5rem;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .card {
-      background-color: var(--card-bg);
-      border-radius: 0.75rem;
-      border: 1px solid var(--border-color);
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #f1f5f9;
-      padding-bottom: 0.75rem;
-    }
-
-    .step-title {
-      font-size: 1.125rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .step-badge {
-      background-color: var(--primary);
-      color: #fff;
-      border-radius: 50%;
-      width: 1.75rem;
-      height: 1.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: 700;
-    }
-
-    .badge-success {
-      background-color: #d1fae5;
-      color: #065f46;
-      font-size: 0.75rem;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-weight: 500;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-
-    .grid-4 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-
-    label {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: #334155;
-    }
-
-    .help-text {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    input[type="text"], input[type="url"], select {
-      width: 100%;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus, input[type="url"]:focus, select:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
-    }
-
-    select[multiple] {
-      height: 110px;
-    }
-
-    .btn {
-      padding: 0.6rem 1.25rem;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: background-color 0.2s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      text-decoration: none;
-    }
-
-    .btn-primary { background-color: var(--primary); color: #fff; }
-    .btn-primary:hover { background-color: var(--primary-hover); }
-
-    .btn-amber { background-color: #d97706; color: #fff; }
-    .btn-amber:hover { background-color: #b45309; }
-
-    .btn-emerald { background-color: var(--emerald); color: #fff; }
-    .btn-emerald:hover { background-color: var(--emerald-hover); }
-
-    .card-amber {
-      background-color: var(--amber-bg);
-      border-color: var(--amber-border);
-    }
-
-    /* Tabla */
-    .table-container {
-      max-height: 220px;
-      overflow-y: auto;
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
-      background-color: #f8fafc;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.8125rem;
-    }
-
-    th {
-      background-color: #e2e8f0;
-      padding: 0.5rem 0.75rem;
-      position: sticky;
-      top: 0;
-      font-weight: 600;
-      color: #334155;
-    }
-
-    td {
-      padding: 0.5rem 0.75rem;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    tr:hover { background-color: #f1f5f9; }
-
-    /* Secciones Ocultas / Deshabilitadas */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-slate); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
+    header { background-color: #1e1b4b; color: white; padding: 1rem 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    main { max-width: 1100px; width: 100%; margin: 1.5rem auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 1.5rem; flex: 1; }
+    
+    .card { background: white; border-radius: 12px; border: 1px solid var(--border-color); padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card-title { font-size: 1.1rem; font-weight: 700; display: flex; items-center; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; }
+    .badge-number { background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+    
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    
+    label { font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem; display: block; }
+    input[type="text"], input[type="url"], input[type="file"], select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; }
+    select[multiple] { height: 90px; }
+    
+    button, .btn { background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    button:hover, .btn:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); }
+    .btn-success:hover { background: #059669; }
+    
     .hidden { display: none !important; }
-
-    .disabled-card {
-      opacity: 0.5;
-      pointer-events: none;
-    }
-
-    /* Consola Log */
-    .log-box {
-      background-color: #0f172a;
-      color: #34d399;
-      font-family: monospace;
-      font-size: 0.75rem;
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      height: 140px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    /* Barra de Progreso */
-    .progress-track {
-      width: 100%;
-      height: 8px;
-      background-color: #e2e8f0;
-      border-radius: 9999px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      width: 0%;
-      background-color: var(--primary);
-      transition: width 0.2s ease;
-    }
-
-    .download-banner {
-      background-color: #ecfdf5;
-      border: 1px solid #a7f3d0;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid #e2e8f0;
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    .disabled { opacity: 0.5; pointer-events: none; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+    th, td { border: 1px solid var(--border-color); padding: 0.5rem; text-align: left; }
+    th { background: #f1f5f9; font-weight: 600; }
+    
+    .progress-bar-bg { width: 100%; background: #e2e8f0; border-radius: 999px; height: 10px; overflow: hidden; }
+    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.2s; }
+    
+    #logBox { background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; height: 160px; overflow-y: auto; white-space: pre-wrap; }
+    
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
   <header>
-    <div class="header-container">
-      <div class="header-title">
-        <h1>Consolidador de Cartas y PDF</h1>
-        <p>Procesamiento nativo rápido con descarga garantizada</p>
-      </div>
-    </div>
+    <h1>Consolidador Universal de Cartas PDF</h1>
   </header>
 
   <main>
-
-    <!-- PASO 1: Carga de Archivo -->
+    <!-- PASO 1 -->
     <section class="card">
-      <div class="card-header">
-        <div class="step-title">
-          <span class="step-badge">1</span>
-          <span>Cargar Base de Datos</span>
-        </div>
-        <span id="badgeStep1" class="badge-success hidden">Archivo Cargado</span>
+      <div class="card-title">
+        <span class="badge-number">1</span> Cargar Base de Datos
       </div>
-
       <div class="grid-2">
-        <div class="form-group">
+        <div>
           <label for="dbUrl">Enlace Público de Google Sheets / CSV</label>
           <input type="url" id="dbUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
         </div>
-        <div class="form-group">
-          <label for="dbFile">O Seleccionar Archivo (.xlsx, .csv)</label>
+        <div>
+          <label for="dbFile">O Seleccionar Archivo Local (.xlsx, .csv)</label>
           <input type="file" id="dbFile" accept=".csv, .xlsx, .xls">
         </div>
       </div>
-
-      <div style="display: flex; justify-content: flex-end;">
-        <button onclick="cargarBaseDatos()" class="btn btn-primary">
-          Leer Columnas del Archivo
-        </button>
+      <div style="text-align: right;">
+        <button onclick="cargarBaseDatos()">Leer Columnas</button>
       </div>
     </section>
 
-    <!-- PASO 1.5: Mapeo Manual -->
-    <section id="sectionMapping" class="card card-amber hidden">
-      <div class="card-header" style="border-color: var(--amber-border);">
-        <div class="step-title" style="color: #78350f;">
-          <span>Confirmar Mapeo de Columnas</span>
-        </div>
-        <span class="help-text">💡 Mantén presionado Ctrl (o Cmd) para seleccionar múltiples columnas (ej. Nombre + Apellidos)</span>
+    <!-- MAPEO -->
+    <section id="sectionMapping" class="card hidden" style="background: #fffbebfb; border-color: #fde68a;">
+      <div class="card-title" style="color: #92400e;">
+        Configurar Mapeo de Columnas
       </div>
-
+      <p style="font-size: 0.8rem; color: #b45309;">
+        Mantén presionada la tecla <strong>Ctrl</strong> (o <strong>Cmd</strong> en Mac) para seleccionar varias columnas a la vez.
+      </p>
       <div class="grid-4">
-        <div class="form-group">
+        <div>
           <label for="selectColId">ID / Registro:</label>
-          <select id="selectColId" multiple></select>
+          <select id="selectColId"></select>
         </div>
-        <div class="form-group">
+        <div>
           <label for="selectColRemitente">Remitente (Nombres / Apellidos):</label>
           <select id="selectColRemitente" multiple></select>
         </div>
-        <div class="form-group">
+        <div>
           <label for="selectColDestinatario">Destinatario (Nombres / Apellidos):</label>
           <select id="selectColDestinatario" multiple></select>
         </div>
-        <div class="form-group">
-          <label for="selectColUrl" style="color: var(--primary); font-weight: 700;">URL del PDF (*):</label>
-          <select id="selectColUrl" style="border-color: var(--primary);"></select>
+        <div>
+          <label for="selectColUrl">URL / Link del PDF (*):</label>
+          <select id="selectColUrl"></select>
         </div>
       </div>
-
-      <div style="display: flex; justify-content: flex-end;">
-        <button onclick="aplicarMapeoYVistaPrevia()" class="btn btn-amber">
-          Confirmar y Mostrar Vista Previa
-        </button>
+      <div style="text-align: right;">
+        <button onclick="aplicarMapeoYVistaPrevia()" style="background: #d97706;">Confirmar Mapeo</button>
       </div>
     </section>
 
-    <!-- Vista previa -->
+    <!-- VISTA PREVIA -->
     <section id="previewContainer" class="card hidden">
-      <div class="card-header">
-        <span style="font-weight: 600; font-size: 0.875rem;">Vista previa (<span id="totalRows">0</span> registros):</span>
+      <div class="card-title">
+        Vista Previa (<span id="totalRows">0</span> registros)
       </div>
-      <div class="table-container">
+      <div style="max-height: 200px; overflow-y: auto;">
         <table>
           <thead>
             <tr>
@@ -397,47 +136,35 @@
       </div>
     </section>
 
-    <!-- PASO 2: Generación -->
-    <section id="sectionStep2" class="card disabled-card">
-      <div class="card-header">
-        <div class="step-title">
-          <span class="step-badge">2</span>
-          <span>Generar Paquete PDF Consolidado</span>
-        </div>
+    <!-- PASO 2 -->
+    <section id="sectionStep2" class="card disabled">
+      <div class="card-title">
+        <span class="badge-number">2</span> Generar Paquete PDF Consolidado
       </div>
-
-      <div style="display: flex; justify-content: flex-end;">
-        <button id="btnBuildPackage" onclick="construirPaquetePDF()" class="btn btn-emerald">
-          Procesar y Crear PDF Consolidado
-        </button>
+      <div style="text-align: right;">
+        <button onclick="construirPaquetePDF()" class="btn-success">Procesar y Crear PDF Consolidado</button>
       </div>
     </section>
 
-    <!-- Estado y Descarga Garantizada -->
+    <!-- ESTADO -->
     <section id="statusCard" class="card hidden">
-      <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.875rem;">
-        <div id="spinnerIcon" class="spinner"></div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+        <span class="spinner" id="spinnerIcon"></span>
         <span id="statusTitle">Procesando...</span>
       </div>
-
-      <div class="progress-track">
-        <div id="progressBar" class="progress-fill"></div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
       </div>
+      <div id="logBox"></div>
 
-      <div id="logBox" class="log-box"></div>
-
-      <!-- BOTÓN DE DESCARGA DIRECTA -->
-      <div id="downloadArea" class="download-banner hidden">
+      <div id="downloadArea" class="hidden" style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
         <div>
-          <h4 style="color: #065f46; font-size: 0.875rem; font-weight: 700;">¡Documento Consolidado Listo!</h4>
-          <p style="color: #047857; font-size: 0.75rem;">El archivo se ha compilado con éxito.</p>
+          <strong style="color: #065f46;">¡Documento Consolidado Listo!</strong>
+          <p style="font-size: 0.8rem; color: #047857;">Descarga el PDF unificado generado directamente en memoria.</p>
         </div>
-        <a id="downloadBtn" href="#" download="Paquete_PDF_Consolidado.pdf" class="btn btn-emerald">
-          DESCARGAR PAQUETE PDF
-        </a>
+        <a id="downloadBtn" href="#" download="Paquete_PDF.pdf" class="btn btn-success">DESCARGAR PAQUETE PDF</a>
       </div>
     </section>
-
   </main>
 
   <script>
@@ -448,9 +175,7 @@
 
     const log = (msg) => {
       const box = document.getElementById('logBox');
-      const div = document.createElement('div');
-      div.textContent = `> ${msg}`;
-      box.appendChild(div);
+      box.textContent += `> ${msg}\n`;
       box.scrollTop = box.scrollHeight;
     };
 
@@ -465,7 +190,6 @@
     function normalizarURL(url) {
       if (!url || typeof url !== 'string') return '';
       let u = url.trim();
-
       if (!u.startsWith('http://') && !u.startsWith('https://')) return '';
 
       if (u.includes('drive.google.com') || u.includes('docs.google.com')) {
@@ -477,6 +201,7 @@
       return u;
     }
 
+    // DESCARGA CON TIMEOUT ESTRICTO DE 3 SEGUNDOS POR INTENTO
     async function descargarConProxyCascada(urlDirecta) {
       const gDriveId = extraerIdGoogleDrive(urlDirecta);
 
@@ -489,16 +214,16 @@
         ];
       } else {
         proxies = [
+          urlDirecta, // Primero probar directamente por si no tiene bloqueo CORS
           `https://corsproxy.io/?${encodeURIComponent(urlDirecta)}`,
-          `https://api.allorigins.win/raw?url=${encodeURIComponent(urlDirecta)}`,
-          urlDirecta
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(urlDirecta)}`
         ];
       }
 
       for (const targetUrl of proxies) {
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 6000);
+          const timer = setTimeout(() => controller.abort(), 3500); // 3.5 segundos máximo de tiempo de espera
           
           const res = await fetch(targetUrl, { signal: controller.signal });
           clearTimeout(timer);
@@ -507,9 +232,11 @@
             const buf = await res.arrayBuffer();
             if (buf && buf.byteLength > 200) return buf;
           }
-        } catch (e) {}
+        } catch (e) {
+          // Fallo o timeout: pasa rápidamente al siguiente proxy
+        }
       }
-      throw new Error("No se pudo descargar el archivo.");
+      throw new Error("Tiempo de espera agotado o bloqueo de red al descargar el archivo.");
     }
 
     async function cargarBaseDatos() {
@@ -517,7 +244,7 @@
       const urlInput = document.getElementById('dbUrl').value.trim();
 
       if (!fileInput && !urlInput) {
-        alert("Selecciona un archivo Excel/CSV o ingresa un enlace.");
+        alert("Por favor selecciona un archivo o ingresa un enlace.");
         return;
       }
 
@@ -534,9 +261,7 @@
           rawExcelData = await new Promise(r => Papa.parse(text, { header: true, skipEmptyLines: true, complete: res => r(res.data) }));
         }
 
-        if (!rawExcelData || rawExcelData.length === 0) {
-          throw new Error("No se encontraron registros en el archivo.");
-        }
+        if (!rawExcelData || rawExcelData.length === 0) throw new Error("No se encontraron registros en la tabla.");
 
         columnasDisponibles = Object.keys(rawExcelData[0]);
         poblarSelectores(columnasDisponibles);
@@ -545,7 +270,7 @@
         log(`Se cargaron ${rawExcelData.length} registros y ${columnasDisponibles.length} columnas.`);
 
       } catch (err) {
-        alert(`Error al leer base de datos: ${err.message}`);
+        alert(`Error: ${err.message}`);
         log(`ERROR: ${err.message}`);
       }
     }
@@ -562,57 +287,42 @@
           sel.appendChild(opt);
         });
       });
-
-      cols.forEach(c => {
-        const lower = c.toLowerCase();
-        if (lower.includes('id') || lower.includes('num') || lower.includes('registro')) {
-          document.getElementById('selectColId').options[cols.indexOf(c)].selected = true;
-        }
-        if (lower.includes('remitente') || lower.includes('de') || lower.includes('envia') || lower.includes('nombre')) {
-          document.getElementById('selectColRemitente').options[cols.indexOf(c)].selected = true;
-        }
-        if (lower.includes('destinatario') || lower.includes('para') || lower.includes('recibe')) {
-          document.getElementById('selectColDestinatario').options[cols.indexOf(c)].selected = true;
-        }
-        if (lower.includes('url') || lower.includes('link') || lower.includes('enlace') || lower.includes('carta') || lower.includes('drive')) {
-          document.getElementById('selectColUrl').value = c;
-        }
-      });
     }
 
-    function obtenerValoresCampos(row, selectId) {
+    function obtenerValoresSeleccionados(selectId) {
       const select = document.getElementById(selectId);
-      const selectedOpts = Array.from(select.selectedOptions).map(o => o.value);
-      
-      const valores = selectedOpts
-        .map(col => row[col] ? row[col].toString().trim() : '')
-        .filter(val => val.length > 0);
-
-      return valores.join(' ');
+      return Array.from(select.selectedOptions).map(option => option.value);
     }
 
     function aplicarMapeoYVistaPrevia() {
-      const colUrl = document.getElementById('selectColUrl').value;
+      const colsId = obtenerValoresSeleccionados('selectColId');
+      const colsRemitente = obtenerValoresSeleccionados('selectColRemitente');
+      const colsDestinatario = obtenerValoresSeleccionados('selectColDestinatario');
+      const colsUrl = obtenerValoresSeleccionados('selectColUrl');
+
+      if (colsUrl.length === 0) {
+        alert("Debes seleccionar la columna correspondiente a la URL del PDF.");
+        return;
+      }
 
       datosProcesados = rawExcelData.map((reg, idx) => {
-        const valUrl = reg[colUrl] ? reg[colUrl].toString().trim() : '';
-        const idConstruido = obtenerValoresCampos(reg, 'selectColId') || `REG-${idx + 1}`;
-        const remitenteConstruido = obtenerValoresCampos(reg, 'selectColRemitente') || 'Sin Remitente';
-        const destinatarioConstruido = obtenerValoresCampos(reg, 'selectColDestinatario') || 'Sin Destinatario';
+        const idVal = colsId.map(c => reg[c]).filter(Boolean).join(' - ') || `REG-${idx + 1}`;
+        const remitenteVal = colsRemitente.map(c => reg[c]).filter(Boolean).join(' ') || 'Sin Remitente';
+        const destinatarioVal = colsDestinatario.map(c => reg[c]).filter(Boolean).join(' ') || 'Sin Destinatario';
+        const urlOriginal = reg[colsUrl[0]] ? reg[colsUrl[0]].toString().trim() : '';
 
         return {
           index: idx + 1,
-          id: idConstruido,
-          remitente: remitenteConstruido,
-          destinatario: destinatarioConstruido,
-          urlOriginal: valUrl,
-          urlDirecta: normalizarURL(valUrl)
+          id: idVal,
+          remitente: remitenteVal,
+          destinatario: destinatarioVal,
+          urlOriginal: urlOriginal,
+          urlDirecta: normalizarURL(urlOriginal)
         };
       });
 
       renderTablaPreview(datosProcesados);
-      document.getElementById('sectionStep2').classList.remove('disabled-card');
-      document.getElementById('badgeStep1').classList.remove('hidden');
+      document.getElementById('sectionStep2').classList.remove('disabled');
       log("Mapeo guardado exitosamente.");
     }
 
@@ -626,14 +336,12 @@
         const esUrlValida = d.urlDirecta !== '';
 
         tr.innerHTML = `
-          <td style="color: #94a3b8;">${d.index}</td>
-          <td style="font-weight: 700;">${d.id}</td>
+          <td>${d.index}</td>
+          <td><strong>${d.id}</strong></td>
           <td>${d.remitente}</td>
           <td>${d.destinatario}</td>
-          <td style="color: ${esUrlValida ? '#4f46e5' : '#dc2626'};">
-            ${esUrlValida 
-              ? `<a href="${d.urlDirecta}" target="_blank" style="color: inherit;">${d.urlDirecta.substring(0, 35)}...</a>` 
-              : `⚠️ URL Inválida`}
+          <td style="color: ${esUrlValida ? '#4f46e5' : '#ef4444'};">
+            ${esUrlValida ? `<a href="${d.urlDirecta}" target="_blank">${d.urlDirecta.substring(0, 35)}...</a>` : 'URL Inválida'}
           </td>
         `;
         tbody.appendChild(tr);
@@ -658,11 +366,8 @@
 
       document.getElementById('statusCard').classList.remove('hidden');
       document.getElementById('downloadArea').classList.add('hidden');
-      document.getElementById('statusTitle').textContent = `Iniciando construcción...`;
+      document.getElementById('statusTitle').textContent = `Iniciando compilación de archivos PDF...`;
       
-      const spinner = document.getElementById('spinnerIcon');
-      spinner.className = "spinner";
-
       const { PDFDocument, rgb, StandardFonts } = PDFLib;
       const pdfMaestro = await PDFDocument.create();
       const fontBold = await pdfMaestro.embedFont(StandardFonts.HelveticaBold);
@@ -673,13 +378,12 @@
       for (let i = 0; i < total; i++) {
         const d = datosProcesados[i];
         const percent = Math.round(((i + 1) / total) * 100);
-        
         document.getElementById('progressBar').style.width = `${percent}%`;
-        document.getElementById('statusTitle').textContent = `Procesando (${i + 1}/${total})...`;
-        log(`[${i + 1}/${total}] Procesando ID: ${d.id}`);
+        
+        log(`Procesando (${i+1}/${total}) - ID: ${d.id}`);
 
-        // Pausa deliberada de 10ms para permitir refresco visual de la pantalla
-        await new Promise(r => setTimeout(r, 10));
+        // Libera la interfaz gráfica para evitar congelamientos en la UI
+        await new Promise(r => setTimeout(r, 20));
 
         if (!d.urlDirecta) {
           agregarHojaError(pdfMaestro, d, `URL no válida: "${d.urlOriginal}"`, fontBold, fontRegular);
@@ -695,48 +399,44 @@
 
             copiedPages.forEach(page => {
               const { width, height } = page.getSize();
-              page.drawRectangle({ x: 0, y: height - 28, width: width, height: 28, color: rgb(0.93, 0.93, 0.95) });
+              page.drawRectangle({ x: 0, y: height - 25, width: width, height: 25, color: rgb(0.93, 0.93, 0.95) });
               page.drawText(`ID: ${d.id} | DE: ${d.remitente} | PARA: ${d.destinatario}`, {
-                x: 12, y: height - 18, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
+                x: 10, y: height - 17, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
               });
               pdfMaestro.addPage(page);
             });
-
           } catch (ePDF) {
+            // Intentar como Imagen si no es un PDF válido
             try {
               const page = pdfMaestro.addPage([612, 792]);
               let img;
               try { img = await pdfMaestro.embedJpg(buffer); } 
               catch (e) { img = await pdfMaestro.embedPng(buffer); }
 
-              page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.93, 0.93, 0.95) });
+              page.drawRectangle({ x: 0, y: 767, width: 612, height: 25, color: rgb(0.93, 0.93, 0.95) });
               page.drawText(`ID: ${d.id} | DE: ${d.remitente} | PARA: ${d.destinatario}`, {
-                x: 15, y: 767, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
+                x: 10, y: 775, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
               });
 
-              const dims = img.scaleToFit(582, 720);
-              page.drawImage(img, { x: 15, y: 740 - dims.height, width: dims.width, height: dims.height });
-
+              const dims = img.scaleToFit(580, 740);
+              page.drawImage(img, { x: 16, y: 760 - dims.height, width: dims.width, height: dims.height });
             } catch (eImg) {
-              throw new Error("El formato no es PDF ni imagen PNG/JPG válido.");
+              throw new Error("El archivo no es un PDF ni imagen válida.");
             }
           }
 
         } catch (e) {
-          log(`⚠️ Error en registro ${d.id}: ${e.message}`);
+          log(`  ⚠️ Fallo en archivo (ID ${d.id}): ${e.message}`);
           agregarHojaError(pdfMaestro, d, e.message, fontBold, fontRegular);
         }
       }
 
-      log('Compilando documento final...');
-      document.getElementById('statusTitle').textContent = `Guardando PDF consolidado...`;
-
-      await new Promise(r => setTimeout(r, 50));
-
+      log('Compilando el documento final...');
+      
       try {
         const pdfBytes = await pdfMaestro.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-
+        
         if (currentPdfBlobUrl) URL.revokeObjectURL(currentPdfBlobUrl);
         currentPdfBlobUrl = URL.createObjectURL(blob);
 
@@ -744,14 +444,13 @@
         btnDownload.href = currentPdfBlobUrl;
         btnDownload.download = `Paquete_Consolidado_${Date.now()}.pdf`;
 
-        document.getElementById('statusTitle').textContent = "¡Paquete PDF generado con éxito!";
-        spinner.style.display = "none";
+        document.getElementById('statusTitle').textContent = "¡Paquete PDF preparado correctamente!";
+        document.getElementById('spinnerIcon').style.display = 'none';
         document.getElementById('downloadArea').classList.remove('hidden');
 
-        log('¡LISTO! Clic en el botón para descargar.');
+        log('¡PROCESO COMPLETADO! Haz clic en el botón verde para descargar tu paquete.');
       } catch (errSave) {
-        log(`ERROR AL GUARDAR: ${errSave.message}`);
-        alert('Ocurrió un error al compilar el PDF.');
+        log(`ERROR DE MEMORIA: El PDF supera la capacidad RAM de procesamiento de tu navegador.`);
       }
     }
 
@@ -759,14 +458,14 @@
       const { rgb } = PDFLib;
       const page = pdfMaestro.addPage([612, 792]);
       
-      page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(1, 0.9, 0.9) });
+      page.drawRectangle({ x: 0, y: 767, width: 612, height: 25, color: rgb(1, 0.9, 0.9) });
       page.drawText(`ID: ${datos.id} | DE: ${datos.remitente} | PARA: ${datos.destinatario}`, {
-        x: 15, y: 767, size: 8, font: fontBold, color: rgb(0.7, 0.0, 0.0)
+        x: 10, y: 775, size: 8, font: fontBold, color: rgb(0.7, 0.0, 0.0)
       });
 
-      page.drawText('No se pudo adjuntar el documento', { x: 50, y: 680, size: 14, font: fontBold, color: rgb(0.8, 0, 0) });
-      page.drawText(`Detalle: ${errorMsg}`, { x: 50, y: 650, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
-      page.drawText(`Valor en campo URL: ${datos.urlOriginal || 'Vacío'}`, { x: 50, y: 620, size: 9, font: fontRegular, color: rgb(0, 0, 0.8) });
+      page.drawText('Error al descargar/adjuntar el documento', { x: 40, y: 680, size: 14, font: fontBold, color: rgb(0.8, 0, 0) });
+      page.drawText(`Detalle: ${errorMsg}`, { x: 40, y: 650, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+      page.drawText(`URL registrada: ${datos.urlOriginal || 'Vacía'}`, { x: 40, y: 620, size: 9, font: fontRegular, color: rgb(0, 0, 0.8) });
     }
   </script>
 </body>
