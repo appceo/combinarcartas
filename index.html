@@ -153,7 +153,7 @@
       box.scrollTop = box.scrollHeight;
     };
 
-    // Función para descargar archivos evitando que se pegue la red
+    // Descarga con control de timeout estricto para evitar bloqueos
     async function descargarPDFSeguro(urlDirecta) {
       const proxies = [
         urlDirecta,
@@ -164,7 +164,7 @@
       for (const targetUrl of proxies) {
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 3500); // 3.5s Máximo por intento
+          const timer = setTimeout(() => controller.abort(), 3500); // Max 3.5 segundos por intento
           
           const res = await fetch(targetUrl, { signal: controller.signal });
           clearTimeout(timer);
@@ -174,10 +174,10 @@
             if (buf && buf.byteLength > 200) return buf;
           }
         } catch (e) {
-          // Si expira o falla pasa al siguiente proxy sin congelar la app
+          // Continúa con el siguiente proxy en caso de fallo o timeout
         }
       }
-      throw new Error("El servidor bloqueó el acceso o el archivo no existe.");
+      throw new Error("El servidor no respondió a tiempo o bloqueó la conexión.");
     }
 
     async function cargarBaseDatos() {
@@ -185,12 +185,12 @@
       const urlInput = document.getElementById('dbUrl').value.trim();
 
       if (!fileInput && !urlInput) {
-        alert("Por favor selecciona un archivo Excel/CSV o ingresa una URL de Google Sheets.");
+        alert("Por favor selecciona un archivo Excel/CSV o ingresa una URL.");
         return;
       }
 
       document.getElementById('statusCard').classList.remove('hidden');
-      log("Leyendo base de datos...");
+      log("Leyendo archivo de base de datos...");
 
       try {
         if (fileInput) {
@@ -201,16 +201,16 @@
           rawExcelData = await new Promise(r => Papa.parse(text, { header: true, skipEmptyLines: true, complete: res => r(res.data) }));
         }
 
-        if (!rawExcelData || rawExcelData.length === 0) throw new Error("No se encontraron registros en la base de datos.");
+        if (!rawExcelData || rawExcelData.length === 0) throw new Error("No se encontraron registros.");
 
         const columnas = Object.keys(rawExcelData[0]);
         poblarSelectores(columnas);
 
         document.getElementById('sectionMapping').classList.remove('hidden');
-        log(`Se cargaron ${rawExcelData.length} registros y ${columnas.length} columnas.`);
+        log(`Base de datos cargada: ${rawExcelData.length} filas detectadas.`);
 
       } catch (err) {
-        alert(`Error al leer archivo: ${err.message}`);
+        alert(`Error al leer base de datos: ${err.message}`);
         log(`ERROR: ${err.message}`);
       }
     }
@@ -255,7 +255,7 @@
 
       renderTablaPreview(datosProcesados);
       document.getElementById('sectionStep2').classList.remove('disabled');
-      log("Mapeo guardado exitosamente.");
+      log("Mapeo guardado. Todo listo para procesar.");
     }
 
     function renderTablaPreview(datos) {
@@ -296,7 +296,7 @@
       btn.disabled = true;
       
       document.getElementById('statusCard').classList.remove('hidden');
-      document.getElementById('statusTitle').textContent = `Compilando paquete PDF...`;
+      document.getElementById('statusTitle').textContent = `Procesando cartas...`;
       
       const { PDFDocument, rgb, StandardFonts } = PDFLib;
       const pdfConsolidado = await PDFDocument.create();
@@ -312,7 +312,7 @@
         
         log(`Procesando (${i+1}/${total}) - ID: ${d.id}...`);
 
-        // Pausa breve para permitir actualización visual de la pantalla
+        // Liberación de hilo principal para actualización continua de interfaz
         await new Promise(r => setTimeout(r, 15));
 
         if (!d.url || !d.url.startsWith('http')) {
@@ -333,15 +333,15 @@
             });
             pdfConsolidado.addPage(page);
           });
-          log(`  ✓ ID ${d.id} agregado correctamente.`);
+          log(`  ✓ Carta ${d.id} agregada.`);
 
         } catch (e) {
-          log(`  ⚠️ Error en ID ${d.id}: ${e.message}`);
+          log(`  ⚠️ Falló ID ${d.id}: ${e.message}`);
           agregarHojaError(pdfConsolidado, d, e.message, fontBold, fontRegular);
         }
       }
 
-      log('Generando archivo PDF final...');
+      log('Compilando PDF unificado...');
       
       try {
         const pdfBytes = await pdfConsolidado.save();
@@ -349,13 +349,13 @@
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `Paquete_PDF_Consolidado_${Date.now()}.pdf`;
+        link.download = `Consolidado_Cartas_${Date.now()}.pdf`;
         link.click();
 
-        document.getElementById('statusTitle').textContent = "¡Proceso completado con éxito!";
-        log('✅ Descarga iniciada automáticamente.');
+        document.getElementById('statusTitle').textContent = "¡Proceso finalizado!";
+        log('✅ Descarga del PDF iniciada automáticamente.');
       } catch (errSave) {
-        log(`❌ Error al generar el archivo final: ${errSave.message}`);
+        log(`❌ Error al generar el archivo unificado: ${errSave.message}`);
       } finally {
         btn.disabled = false;
       }
@@ -370,9 +370,9 @@
         x: 10, y: 775, size: 8, font: fontBold, color: rgb(0.7, 0.0, 0.0)
       });
 
-      page.drawText('No se pudo incluir la carta de este registro', { x: 40, y: 680, size: 14, font: fontBold, color: rgb(0.8, 0, 0) });
-      page.drawText(`Causa: ${errorMsg}`, { x: 40, y: 650, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
-      page.drawText(`URL registrada: ${datos.url || 'Sin URL'}`, { x: 40, y: 620, size: 9, font: fontRegular, color: rgb(0, 0, 0.8) });
+      page.drawText('No se pudo descargar la carta de este registro', { x: 40, y: 680, size: 14, font: fontBold, color: rgb(0.8, 0, 0) });
+      page.drawText(`Motivo: ${errorMsg}`, { x: 40, y: 650, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+      page.drawText(`URL del registro: ${datos.url || 'Sin URL'}`, { x: 40, y: 620, size: 9, font: fontRegular, color: rgb(0, 0, 0.8) });
     }
   </script>
 </body>
