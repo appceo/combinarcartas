@@ -1,127 +1,773 @@
-<!-- PASO 1: Carga de Archivo -->
-<section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-  <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-    <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-      <span class="bg-indigo-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">1</span>
-      Cargar Base de Datos
-    </h2>
-    <span id="badgeStep1" class="hidden bg-emerald-100 text-emerald-800 text-xs px-3 py-1 rounded-full font-medium">Archivo Cargado</span>
-  </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consolidador Universal de Cartas</title>
+  
+  <!-- Librerías JS necesarias -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label class="block text-sm font-medium text-slate-700">Enlace Público de Google Sheets / CSV</label>
-      <input type="url" id="dbUrl" placeholder="https://docs.google.com/spreadsheets/d/..." 
-             class="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+  <style>
+    /* Estilos Nativos CSS Puros */
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-main: #f1f5f9;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --amber-bg: #fffbeb;
+      --amber-border: #fcd34d;
+      --emerald: #10b981;
+      --emerald-hover: #059669;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: #1e1b4b;
+      color: #ffffff;
+      padding: 1.25rem 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .header-title p {
+      font-size: 0.75rem;
+      color: #a5b4fc;
+      margin-top: 2px;
+    }
+
+    main {
+      max-width: 1100px;
+      width: 100%;
+      margin: 1.5rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 0.75rem;
+    }
+
+    .step-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .step-badge {
+      background-color: var(--primary);
+      color: #fff;
+      border-radius: 50%;
+      width: 1.75rem;
+      height: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-success {
+      background-color: #d1fae5;
+      color: #065f46;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #334155;
+    }
+
+    .help-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    input[type="text"], input[type="url"], select {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, input[type="url"]:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    }
+
+    select[multiple] {
+      height: 110px;
+    }
+
+    .btn {
+      padding: 0.6rem 1.25rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+
+    .btn-primary { background-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+
+    .btn-amber { background-color: #d97706; color: #fff; }
+    .btn-amber:hover { background-color: #b45309; }
+
+    .btn-emerald { background-color: var(--emerald); color: #fff; }
+    .btn-emerald:hover { background-color: var(--emerald-hover); }
+
+    .card-amber {
+      background-color: var(--amber-bg);
+      border-color: var(--amber-border);
+    }
+
+    /* Tabla */
+    .table-container {
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      background-color: #f8fafc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.8125rem;
+    }
+
+    th {
+      background-color: #e2e8f0;
+      padding: 0.5rem 0.75rem;
+      position: sticky;
+      top: 0;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    tr:hover { background-color: #f1f5f9; }
+
+    /* Secciones Ocultas / Deshabilitadas */
+    .hidden { display: none !important; }
+
+    .disabled-card {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    /* Consola Log */
+    .log-box {
+      background-color: #0f172a;
+      color: #34d399;
+      font-family: monospace;
+      font-size: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      height: 140px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    /* Barra de Progreso */
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background-color: #e2e8f0;
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background-color: var(--primary);
+      transition: width 0.2s ease;
+    }
+
+    .download-banner {
+      background-color: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e2e8f0;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-container">
+      <div class="header-title">
+        <h1>Consolidador de Cartas y PDF</h1>
+        <p>Procesamiento nativo rápido con descarga garantizada</p>
+      </div>
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700">O Seleccionar Archivo (.xlsx, .csv)</label>
-      <input type="file" id="dbFile" accept=".csv, .xlsx, .xls" 
-             class="w-full mt-1 text-sm text-slate-500 border border-slate-300 rounded-lg file:py-2 file:px-4 file:border-0 file:bg-indigo-50 file:text-indigo-700">
-    </div>
-  </div>
+  </header>
 
-  <div class="flex justify-end pt-2">
-    <button onclick="cargarBaseDatos()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2 rounded-lg text-sm transition flex items-center gap-2">
-      <i class="fa-solid fa-folder-open"></i> Leer Columnas del Archivo
-    </button>
-  </div>
-</section>
+  <main>
 
-<!-- PASO 1.5: Mapeo Manual -->
-<section id="sectionMapping" class="hidden bg-white rounded-xl shadow-sm border border-amber-300 bg-amber-50/30 p-6 space-y-4">
-  <div class="flex items-center justify-between border-b border-amber-200 pb-2">
-    <div class="flex items-center gap-2 text-amber-900 font-semibold">
-      <i class="fa-solid fa-sliders text-amber-600"></i>
-      <span>Confirmar Mapeo de Columnas</span>
-    </div>
-    <span class="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">Nota: Mantén presionado Ctrl / Cmd para seleccionar múltiples columnas (ej. Nombre + Apellido)</span>
-  </div>
+    <!-- PASO 1: Carga de Archivo -->
+    <section class="card">
+      <div class="card-header">
+        <div class="step-title">
+          <span class="step-badge">1</span>
+          <span>Cargar Base de Datos</span>
+        </div>
+        <span id="badgeStep1" class="badge-success hidden">Archivo Cargado</span>
+      </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div>
-      <label class="block text-xs font-bold text-slate-700 mb-1">ID / Registro:</label>
-      <select id="selectColId" class="w-full p-2 border border-slate-300 rounded bg-white text-xs h-28" multiple></select>
-    </div>
-    <div>
-      <label class="block text-xs font-bold text-slate-700 mb-1">Remitente (Nombres/Apellidos):</label>
-      <select id="selectColRemitente" class="w-full p-2 border border-slate-300 rounded bg-white text-xs h-28" multiple></select>
-    </div>
-    <div>
-      <label class="block text-xs font-bold text-slate-700 mb-1">Destinatario (Nombres/Apellidos):</label>
-      <select id="selectColDestinatario" class="w-full p-2 border border-slate-300 rounded bg-white text-xs h-28" multiple></select>
-    </div>
-    <div>
-      <label class="block text-xs font-bold text-indigo-700 mb-1">URL / Link del PDF (*):</label>
-      <select id="selectColUrl" class="w-full p-2 border-2 border-indigo-500 rounded bg-white text-xs font-semibold text-indigo-900 h-28"></select>
-    </div>
-  </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="dbUrl">Enlace Público de Google Sheets / CSV</label>
+          <input type="url" id="dbUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+        </div>
+        <div class="form-group">
+          <label for="dbFile">O Seleccionar Archivo (.xlsx, .csv)</label>
+          <input type="file" id="dbFile" accept=".csv, .xlsx, .xls">
+        </div>
+      </div>
 
-  <div class="flex justify-end pt-2">
-    <button onclick="aplicarMapeoYVistaPrevia()" class="bg-amber-600 hover:bg-amber-700 text-white font-medium px-5 py-2 rounded-lg text-sm transition">
-      Confirmar y Mostrar Vista Previa
-    </button>
-  </div>
-</section>
+      <div style="display: flex; justify-content: flex-end;">
+        <button onclick="cargarBaseDatos()" class="btn btn-primary">
+          Leer Columnas del Archivo
+        </button>
+      </div>
+    </section>
 
-<!-- Vista previa -->
-<section id="previewContainer" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-3">
-  <div class="flex items-center justify-between">
-    <h3 class="text-sm font-semibold text-slate-700">Vista previa (<span id="totalRows">0</span> registros):</h3>
-  </div>
-  <div class="max-h-64 overflow-y-auto border border-slate-200 rounded-lg text-xs font-mono bg-slate-50">
-    <table class="w-full text-left border-collapse" id="previewTable">
-      <thead class="bg-slate-200 text-slate-700 sticky top-0">
-        <tr>
-          <th class="p-2 border-b">#</th>
-          <th class="p-2 border-b">ID</th>
-          <th class="p-2 border-b">Remitente Construido</th>
-          <th class="p-2 border-b">Destinatario Construido</th>
-          <th class="p-2 border-b">URL Detectada</th>
-        </tr>
-      </thead>
-      <tbody id="previewBody"></tbody>
-    </table>
-  </div>
-</section>
+    <!-- PASO 1.5: Mapeo Manual -->
+    <section id="sectionMapping" class="card card-amber hidden">
+      <div class="card-header" style="border-color: var(--amber-border);">
+        <div class="step-title" style="color: #78350f;">
+          <span>Confirmar Mapeo de Columnas</span>
+        </div>
+        <span class="help-text">💡 Mantén presionado Ctrl (o Cmd) para seleccionar múltiples columnas (ej. Nombre + Apellidos)</span>
+      </div>
 
-<!-- PASO 2: Generación -->
-<section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4 opacity-50 pointer-events-none transition-all duration-300" id="sectionStep2">
-  <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-    <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-      <span class="bg-indigo-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold">2</span>
-      Generar Paquete PDF Consolidado
-    </h2>
-  </div>
+      <div class="grid-4">
+        <div class="form-group">
+          <label for="selectColId">ID / Registro:</label>
+          <select id="selectColId" multiple></select>
+        </div>
+        <div class="form-group">
+          <label for="selectColRemitente">Remitente (Nombres / Apellidos):</label>
+          <select id="selectColRemitente" multiple></select>
+        </div>
+        <div class="form-group">
+          <label for="selectColDestinatario">Destinatario (Nombres / Apellidos):</label>
+          <select id="selectColDestinatario" multiple></select>
+        </div>
+        <div class="form-group">
+          <label for="selectColUrl" style="color: var(--primary); font-weight: 700;">URL del PDF (*):</label>
+          <select id="selectColUrl" style="border-color: var(--primary);"></select>
+        </div>
+      </div>
 
-  <div class="flex justify-end">
-    <button id="btnBuildPackage" onclick="construirPaquetePDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-lg shadow transition flex items-center gap-2">
-      <i class="fa-solid fa-box-archive"></i> Procesar y Crear PDF Consolidado
-    </button>
-  </div>
-</section>
+      <div style="display: flex; justify-content: flex-end;">
+        <button onclick="aplicarMapeoYVistaPrevia()" class="btn btn-amber">
+          Confirmar y Mostrar Vista Previa
+        </button>
+      </div>
+    </section>
 
-<!-- Estado y Descarga Garantizada -->
-<section id="statusCard" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-  <div class="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-    <i class="fa-solid fa-circle-notch animate-spin text-indigo-600" id="spinnerIcon"></i>
-    <span id="statusTitle">Procesando...</span>
-  </div>
+    <!-- Vista previa -->
+    <section id="previewContainer" class="card hidden">
+      <div class="card-header">
+        <span style="font-weight: 600; font-size: 0.875rem;">Vista previa (<span id="totalRows">0</span> registros):</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ID</th>
+              <th>Remitente Construido</th>
+              <th>Destinatario Construido</th>
+              <th>URL Detectada</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </section>
 
-  <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-    <div id="progressBar" class="bg-indigo-600 h-2.5 w-0 transition-all duration-200"></div>
-  </div>
+    <!-- PASO 2: Generación -->
+    <section id="sectionStep2" class="card disabled-card">
+      <div class="card-header">
+        <div class="step-title">
+          <span class="step-badge">2</span>
+          <span>Generar Paquete PDF Consolidado</span>
+        </div>
+      </div>
 
-  <div id="logBox" class="bg-slate-900 text-emerald-400 p-3 rounded-lg text-xs font-mono h-40 overflow-y-auto space-y-1"></div>
+      <div style="display: flex; justify-content: flex-end;">
+        <button id="btnBuildPackage" onclick="construirPaquetePDF()" class="btn btn-emerald">
+          Procesar y Crear PDF Consolidado
+        </button>
+      </div>
+    </section>
 
-  <!-- BOTÓN DE DESCARGA DIRECTA -->
-  <div id="downloadArea" class="hidden bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
-    <div>
-      <h4 class="font-bold text-emerald-900 text-sm">¡Documento Consolidado Listo!</h4>
-      <p class="text-xs text-emerald-700">El archivo ha sido generado exitosamente en la memoria.</p>
-    </div>
-    <a id="downloadBtn" href="#" download="Paquete_PDF_Consolidado.pdf" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-lg shadow transition flex items-center gap-2 text-sm">
-      <i class="fa-solid fa-download text-lg"></i> DESCARGAR PAQUETE PDF
-    </a>
-  </div>
-</section>
+    <!-- Estado y Descarga Garantizada -->
+    <section id="statusCard" class="card hidden">
+      <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.875rem;">
+        <div id="spinnerIcon" class="spinner"></div>
+        <span id="statusTitle">Procesando...</span>
+      </div>
+
+      <div class="progress-track">
+        <div id="progressBar" class="progress-fill"></div>
+      </div>
+
+      <div id="logBox" class="log-box"></div>
+
+      <!-- BOTÓN DE DESCARGA DIRECTA -->
+      <div id="downloadArea" class="download-banner hidden">
+        <div>
+          <h4 style="color: #065f46; font-size: 0.875rem; font-weight: 700;">¡Documento Consolidado Listo!</h4>
+          <p style="color: #047857; font-size: 0.75rem;">El archivo se ha compilado con éxito.</p>
+        </div>
+        <a id="downloadBtn" href="#" download="Paquete_PDF_Consolidado.pdf" class="btn btn-emerald">
+          DESCARGAR PAQUETE PDF
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let rawExcelData = [];
+    let columnasDisponibles = [];
+    let datosProcesados = [];
+    let currentPdfBlobUrl = null;
+
+    const log = (msg) => {
+      const box = document.getElementById('logBox');
+      const div = document.createElement('div');
+      div.textContent = `> ${msg}`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    };
+
+    function extraerIdGoogleDrive(url) {
+      if (!url || typeof url !== 'string') return null;
+      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || 
+                url.match(/id=([a-zA-Z0-9_-]+)/) || 
+                url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : null;
+    }
+
+    function normalizarURL(url) {
+      if (!url || typeof url !== 'string') return '';
+      let u = url.trim();
+
+      if (!u.startsWith('http://') && !u.startsWith('https://')) return '';
+
+      if (u.includes('drive.google.com') || u.includes('docs.google.com')) {
+        const id = extraerIdGoogleDrive(u);
+        if (id) {
+          return `https://drive.google.com/uc?export=download&confirm=no_antivirus&id=${id}`;
+        }
+      }
+      return u;
+    }
+
+    async function descargarConProxyCascada(urlDirecta) {
+      const gDriveId = extraerIdGoogleDrive(urlDirecta);
+
+      let proxies = [];
+      if (gDriveId) {
+        proxies = [
+          `https://corsproxy.io/?${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${gDriveId}`)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${gDriveId}`)}`,
+          `https://drive.google.com/uc?export=download&id=${gDriveId}`
+        ];
+      } else {
+        proxies = [
+          `https://corsproxy.io/?${encodeURIComponent(urlDirecta)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(urlDirecta)}`,
+          urlDirecta
+        ];
+      }
+
+      for (const targetUrl of proxies) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 6000);
+          
+          const res = await fetch(targetUrl, { signal: controller.signal });
+          clearTimeout(timer);
+
+          if (res.ok) {
+            const buf = await res.arrayBuffer();
+            if (buf && buf.byteLength > 200) return buf;
+          }
+        } catch (e) {}
+      }
+      throw new Error("No se pudo descargar el archivo.");
+    }
+
+    async function cargarBaseDatos() {
+      const fileInput = document.getElementById('dbFile').files[0];
+      const urlInput = document.getElementById('dbUrl').value.trim();
+
+      if (!fileInput && !urlInput) {
+        alert("Selecciona un archivo Excel/CSV o ingresa un enlace.");
+        return;
+      }
+
+      document.getElementById('statusCard').classList.remove('hidden');
+      log("Leyendo base de datos...");
+
+      try {
+        if (fileInput) {
+          rawExcelData = await parseLocalFile(fileInput);
+        } else {
+          const csvUrl = normalizarURL(urlInput) || urlInput;
+          const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`);
+          const text = await res.text();
+          rawExcelData = await new Promise(r => Papa.parse(text, { header: true, skipEmptyLines: true, complete: res => r(res.data) }));
+        }
+
+        if (!rawExcelData || rawExcelData.length === 0) {
+          throw new Error("No se encontraron registros en el archivo.");
+        }
+
+        columnasDisponibles = Object.keys(rawExcelData[0]);
+        poblarSelectores(columnasDisponibles);
+
+        document.getElementById('sectionMapping').classList.remove('hidden');
+        log(`Se cargaron ${rawExcelData.length} registros y ${columnasDisponibles.length} columnas.`);
+
+      } catch (err) {
+        alert(`Error al leer base de datos: ${err.message}`);
+        log(`ERROR: ${err.message}`);
+      }
+    }
+
+    function poblarSelectores(cols) {
+      const selects = ['selectColId', 'selectColRemitente', 'selectColDestinatario', 'selectColUrl'];
+      selects.forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        cols.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          sel.appendChild(opt);
+        });
+      });
+
+      cols.forEach(c => {
+        const lower = c.toLowerCase();
+        if (lower.includes('id') || lower.includes('num') || lower.includes('registro')) {
+          document.getElementById('selectColId').options[cols.indexOf(c)].selected = true;
+        }
+        if (lower.includes('remitente') || lower.includes('de') || lower.includes('envia') || lower.includes('nombre')) {
+          document.getElementById('selectColRemitente').options[cols.indexOf(c)].selected = true;
+        }
+        if (lower.includes('destinatario') || lower.includes('para') || lower.includes('recibe')) {
+          document.getElementById('selectColDestinatario').options[cols.indexOf(c)].selected = true;
+        }
+        if (lower.includes('url') || lower.includes('link') || lower.includes('enlace') || lower.includes('carta') || lower.includes('drive')) {
+          document.getElementById('selectColUrl').value = c;
+        }
+      });
+    }
+
+    function obtenerValoresCampos(row, selectId) {
+      const select = document.getElementById(selectId);
+      const selectedOpts = Array.from(select.selectedOptions).map(o => o.value);
+      
+      const valores = selectedOpts
+        .map(col => row[col] ? row[col].toString().trim() : '')
+        .filter(val => val.length > 0);
+
+      return valores.join(' ');
+    }
+
+    function aplicarMapeoYVistaPrevia() {
+      const colUrl = document.getElementById('selectColUrl').value;
+
+      datosProcesados = rawExcelData.map((reg, idx) => {
+        const valUrl = reg[colUrl] ? reg[colUrl].toString().trim() : '';
+        const idConstruido = obtenerValoresCampos(reg, 'selectColId') || `REG-${idx + 1}`;
+        const remitenteConstruido = obtenerValoresCampos(reg, 'selectColRemitente') || 'Sin Remitente';
+        const destinatarioConstruido = obtenerValoresCampos(reg, 'selectColDestinatario') || 'Sin Destinatario';
+
+        return {
+          index: idx + 1,
+          id: idConstruido,
+          remitente: remitenteConstruido,
+          destinatario: destinatarioConstruido,
+          urlOriginal: valUrl,
+          urlDirecta: normalizarURL(valUrl)
+        };
+      });
+
+      renderTablaPreview(datosProcesados);
+      document.getElementById('sectionStep2').classList.remove('disabled-card');
+      document.getElementById('badgeStep1').classList.remove('hidden');
+      log("Mapeo guardado exitosamente.");
+    }
+
+    function renderTablaPreview(datos) {
+      const tbody = document.getElementById('previewBody');
+      tbody.innerHTML = '';
+      document.getElementById('totalRows').textContent = datos.length;
+
+      datos.forEach(d => {
+        const tr = document.createElement('tr');
+        const esUrlValida = d.urlDirecta !== '';
+
+        tr.innerHTML = `
+          <td style="color: #94a3b8;">${d.index}</td>
+          <td style="font-weight: 700;">${d.id}</td>
+          <td>${d.remitente}</td>
+          <td>${d.destinatario}</td>
+          <td style="color: ${esUrlValida ? '#4f46e5' : '#dc2626'};">
+            ${esUrlValida 
+              ? `<a href="${d.urlDirecta}" target="_blank" style="color: inherit;">${d.urlDirecta.substring(0, 35)}...</a>` 
+              : `⚠️ URL Inválida`}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('previewContainer').classList.remove('hidden');
+    }
+
+    function parseLocalFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]));
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function construirPaquetePDF() {
+      if (datosProcesados.length === 0) return;
+
+      document.getElementById('statusCard').classList.remove('hidden');
+      document.getElementById('downloadArea').classList.add('hidden');
+      document.getElementById('statusTitle').textContent = `Iniciando construcción...`;
+      
+      const spinner = document.getElementById('spinnerIcon');
+      spinner.className = "spinner";
+
+      const { PDFDocument, rgb, StandardFonts } = PDFLib;
+      const pdfMaestro = await PDFDocument.create();
+      const fontBold = await pdfMaestro.embedFont(StandardFonts.HelveticaBold);
+      const fontRegular = await pdfMaestro.embedFont(StandardFonts.Helvetica);
+
+      const total = datosProcesados.length;
+
+      for (let i = 0; i < total; i++) {
+        const d = datosProcesados[i];
+        const percent = Math.round(((i + 1) / total) * 100);
+        
+        document.getElementById('progressBar').style.width = `${percent}%`;
+        document.getElementById('statusTitle').textContent = `Procesando (${i + 1}/${total})...`;
+        log(`[${i + 1}/${total}] Procesando ID: ${d.id}`);
+
+        // Pausa deliberada de 10ms para permitir refresco visual de la pantalla
+        await new Promise(r => setTimeout(r, 10));
+
+        if (!d.urlDirecta) {
+          agregarHojaError(pdfMaestro, d, `URL no válida: "${d.urlOriginal}"`, fontBold, fontRegular);
+          continue;
+        }
+
+        try {
+          const buffer = await descargarConProxyCascada(d.urlDirecta);
+
+          try {
+            const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+            const copiedPages = await pdfMaestro.copyPages(pdfDoc, pdfDoc.getPageIndices());
+
+            copiedPages.forEach(page => {
+              const { width, height } = page.getSize();
+              page.drawRectangle({ x: 0, y: height - 28, width: width, height: 28, color: rgb(0.93, 0.93, 0.95) });
+              page.drawText(`ID: ${d.id} | DE: ${d.remitente} | PARA: ${d.destinatario}`, {
+                x: 12, y: height - 18, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
+              });
+              pdfMaestro.addPage(page);
+            });
+
+          } catch (ePDF) {
+            try {
+              const page = pdfMaestro.addPage([612, 792]);
+              let img;
+              try { img = await pdfMaestro.embedJpg(buffer); } 
+              catch (e) { img = await pdfMaestro.embedPng(buffer); }
+
+              page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(0.93, 0.93, 0.95) });
+              page.drawText(`ID: ${d.id} | DE: ${d.remitente} | PARA: ${d.destinatario}`, {
+                x: 15, y: 767, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
+              });
+
+              const dims = img.scaleToFit(582, 720);
+              page.drawImage(img, { x: 15, y: 740 - dims.height, width: dims.width, height: dims.height });
+
+            } catch (eImg) {
+              throw new Error("El formato no es PDF ni imagen PNG/JPG válido.");
+            }
+          }
+
+        } catch (e) {
+          log(`⚠️ Error en registro ${d.id}: ${e.message}`);
+          agregarHojaError(pdfMaestro, d, e.message, fontBold, fontRegular);
+        }
+      }
+
+      log('Compilando documento final...');
+      document.getElementById('statusTitle').textContent = `Guardando PDF consolidado...`;
+
+      await new Promise(r => setTimeout(r, 50));
+
+      try {
+        const pdfBytes = await pdfMaestro.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+        if (currentPdfBlobUrl) URL.revokeObjectURL(currentPdfBlobUrl);
+        currentPdfBlobUrl = URL.createObjectURL(blob);
+
+        const btnDownload = document.getElementById('downloadBtn');
+        btnDownload.href = currentPdfBlobUrl;
+        btnDownload.download = `Paquete_Consolidado_${Date.now()}.pdf`;
+
+        document.getElementById('statusTitle').textContent = "¡Paquete PDF generado con éxito!";
+        spinner.style.display = "none";
+        document.getElementById('downloadArea').classList.remove('hidden');
+
+        log('¡LISTO! Clic en el botón para descargar.');
+      } catch (errSave) {
+        log(`ERROR AL GUARDAR: ${errSave.message}`);
+        alert('Ocurrió un error al compilar el PDF.');
+      }
+    }
+
+    function agregarHojaError(pdfMaestro, datos, errorMsg, fontBold, fontRegular) {
+      const { rgb } = PDFLib;
+      const page = pdfMaestro.addPage([612, 792]);
+      
+      page.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: rgb(1, 0.9, 0.9) });
+      page.drawText(`ID: ${datos.id} | DE: ${datos.remitente} | PARA: ${datos.destinatario}`, {
+        x: 15, y: 767, size: 8, font: fontBold, color: rgb(0.7, 0.0, 0.0)
+      });
+
+      page.drawText('No se pudo adjuntar el documento', { x: 50, y: 680, size: 14, font: fontBold, color: rgb(0.8, 0, 0) });
+      page.drawText(`Detalle: ${errorMsg}`, { x: 50, y: 650, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+      page.drawText(`Valor en campo URL: ${datos.urlOriginal || 'Vacío'}`, { x: 50, y: 620, size: 9, font: fontRegular, color: rgb(0, 0, 0.8) });
+    }
+  </script>
+</body>
+</html>
