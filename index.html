@@ -3,147 +3,376 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Combinador de PDF Consolidado</title>
-  <!-- Librerías requeridas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+  <title>Combinador de Cartas PDF Consolidado</title>
+  <!-- Librerías para lectura de Excel, CSV y procesamiento de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
-    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    textarea { width: 100%; height: 100px; margin-top: 10px; font-family: monospace; }
-    button { background-color: #00a65a; color: white; border: none; padding: 12px 20px; border-radius: 4px; font-size: 16px; cursor: pointer; }
-    button:disabled { background-color: #cccccc; cursor: not-allowed; }
-    #logConsole { background: #0a1128; color: #00ff88; font-family: monospace; padding: 15px; height: 250px; overflow-y: auto; border-radius: 6px; margin-top: 15px; }
+    :root {
+      --primary: #00a65a;
+      --primary-hover: #008d4c;
+      --bg-slate: #f4f6f9;
+      --border-color: #d2d6de;
+      --text-main: #333333;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-slate); color: var(--text-main); padding: 20px; }
+    
+    .card { background: white; border-radius: 8px; border: 1px solid var(--border-color); padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .card-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f4f4f4; padding-bottom: 10px; }
+    .badge-number { background: #3c8dbc; color: white; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    
+    label { font-size: 0.9rem; font-weight: 600; color: #555; margin-bottom: 5px; display: block; }
+    input[type="text"], input[type="url"], input[type="file"], select { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; }
+    select[multiple] { height: 100px; }
+    
+    button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; font-size: 0.95rem; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { background: #cccccc !important; cursor: not-allowed; }
+    .btn-blue { background: #3c8dbc; }
+    .btn-blue:hover { background: #367fa9; }
+    
+    .hidden { display: none !important; }
+    .disabled { opacity: 0.5; pointer-events: none; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+    th, td { border: 1px solid #e9ecef; padding: 8px; text-align: left; }
+    th { background: #f8f9fa; font-weight: 600; }
+    
+    .progress-bar-bg { width: 100%; background: #e9ecef; border-radius: 4px; height: 12px; overflow: hidden; margin-top: 10px; }
+    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.2s; }
+    
+    #logBox { background: #0a1128; color: #00ff88; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 0.85rem; height: 200px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
   </style>
 </head>
 <body>
 
+  <!-- PASO 1: CARGA DE ARCHIVO -->
   <div class="card">
-    <h2>1. Pegar URLs de los PDF (una por línea) o datos de la tabla</h2>
-    <p>Pega directamente las URLs del servidor <code>igleco.com</code> o el listado de enlaces:</p>
-    <textarea id="txtUrls" placeholder="https://igleco.com/wp-content/uploads/2024/01/documento1.pdf&#10;https://igleco.com/wp-content/uploads/2024/01/documento2.pdf"></textarea>
+    <div class="card-title">
+      <span class="badge-number">1</span> Cargar Base de Datos (Excel / CSV / Google Sheets)
+    </div>
+    <div class="grid-2">
+      <div>
+        <label for="dbFile">Seleccionar Archivo Excel o CSV:</label>
+        <input type="file" id="dbFile" accept=".csv, .xlsx, .xls">
+      </div>
+      <div>
+        <label for="dbUrl">O pegar Enlace Público de Google Sheets / CSV:</label>
+        <input type="url" id="dbUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+      </div>
+    </div>
+    <div style="text-align: right; margin-top: 15px;">
+      <button class="btn-blue" onclick="cargarBaseDatos()">Leer Columnas</button>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>2. Generar Paquete PDF Consolidado</h2>
-    <button id="btnProcesar" onclick="iniciarProcesamiento()">Procesar y Crear PDF Consolidado</button>
-    <div id="logConsole">> Sistema listo. Ingrese las URLs o presione procesar si la tabla ya está cargada.</div>
+  <!-- MAPEO DE COLUMNAS -->
+  <div id="sectionMapping" class="card hidden">
+    <div class="card-title" style="color: #3c8dbc;">
+      Mapeo de Columnas
+    </div>
+    <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">
+      Para nombres y apellidos compuestos, mantén presionada la tecla <strong>Ctrl</strong> (o <strong>Cmd</strong>) para seleccionar múltiples columnas.
+    </p>
+    <div class="grid-4">
+      <div>
+        <label for="selectColId">Columna ID / Registro:</label>
+        <select id="selectColId"></select>
+      </div>
+      <div>
+        <label for="selectColRemitente">Remitente (Nombres/Apellidos):</label>
+        <select id="selectColRemitente" multiple></select>
+      </div>
+      <div>
+        <label for="selectColDestinatario">Destinatario (Nombres/Apellidos):</label>
+        <select id="selectColDestinatario" multiple></select>
+      </div>
+      <div>
+        <label for="selectColUrl">Columna URL / Link del PDF (*):</label>
+        <select id="selectColUrl"></select>
+      </div>
+    </div>
+    <div style="text-align: right; margin-top: 15px;">
+      <button class="btn-blue" onclick="aplicarMapeoYVistaPrevia()">Guardar Mapeo y Ver Tabla</button>
+    </div>
+  </div>
+
+  <!-- VISTA PREVIA DE LA TABLA -->
+  <div id="previewContainer" class="card hidden">
+    <div class="card-title">
+      Registros Detectados (<span id="totalRows">0</span>)
+    </div>
+    <div style="max-height: 250px; overflow-y: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>ID</th>
+            <th>Remitente Construido</th>
+            <th>Destinatario Construido</th>
+            <th>URL Detectada</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PASO 2: GENERACIÓN CONSOLIDADA -->
+  <div id="sectionStep2" class="card disabled">
+    <div class="card-title">
+      <span class="badge-number">2</span> Generar Paquete PDF Consolidado
+    </div>
+    <div style="text-align: right;">
+      <button id="btnProcesar" onclick="construirPaquetePDF()">Procesar y Crear PDF Consolidado</button>
+    </div>
+  </div>
+
+  <!-- CONSOLA DE MONITOREO Y PROGRESO -->
+  <div id="statusCard" class="card hidden">
+    <div style="font-weight: bold;" id="statusTitle">Procesando...</div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div id="logBox"></div>
   </div>
 
   <script>
-    const PROXIES = [
-      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-      url => `https://thingproxy.freeboard.io/fetch/${url}`
-    ];
+    let rawExcelData = [];
+    let datosProcesados = [];
 
-    function log(msg) {
-      const consoleDiv = document.getElementById("logConsole");
-      consoleDiv.innerHTML += `<div>> ${msg}</div>`;
-      consoleDiv.scrollTop = consoleDiv.scrollHeight;
-    }
+    const log = (msg) => {
+      const box = document.getElementById('logBox');
+      box.textContent += `> ${msg}\n`;
+      box.scrollTop = box.scrollHeight;
+    };
 
-    async function descargarPDFConTimeout(url) {
-      // Intento 1: Descarga directa
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (res.ok) return await res.arrayBuffer();
-      } catch (e) {}
+    // Función para descargar archivos evitando que se pegue la red
+    async function descargarPDFSeguro(urlDirecta) {
+      const proxies = [
+        urlDirecta,
+        `https://corsproxy.io/?${encodeURIComponent(urlDirecta)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(urlDirecta)}`
+      ];
 
-      // Intento 2: Mediante Proxies para evitar bloqueo de GitHub Pages / CORS
-      for (const proxyFn of PROXIES) {
+      for (const targetUrl of proxies) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 5000);
-          const res = await fetch(proxyFn(url), { signal: controller.signal });
-          clearTimeout(timeout);
+          const timer = setTimeout(() => controller.abort(), 3500); // 3.5s Máximo por intento
+          
+          const res = await fetch(targetUrl, { signal: controller.signal });
+          clearTimeout(timer);
+
           if (res.ok) {
             const buf = await res.arrayBuffer();
-            if (buf && buf.byteLength > 100) return buf;
+            if (buf && buf.byteLength > 200) return buf;
           }
-        } catch (e) {}
+        } catch (e) {
+          // Si expira o falla pasa al siguiente proxy sin congelar la app
+        }
       }
-      throw new Error("No se pudo obtener el archivo por restricciones de red/CORS");
+      throw new Error("El servidor bloqueó el acceso o el archivo no existe.");
     }
 
-    async function obtenerListaURLs() {
-      let urls = [];
-      
-      // 1. Verificar si hay datos en el cuadro de texto
-      const txt = document.getElementById("txtUrls").value.trim();
-      if (txt.length > 0) {
-        urls = txt.split("\n").map(u => u.trim()).filter(u => u.startsWith("http"));
-      }
+    async function cargarBaseDatos() {
+      const fileInput = document.getElementById('dbFile').files[0];
+      const urlInput = document.getElementById('dbUrl').value.trim();
 
-      // 2. Si no hay en el cuadro de texto, buscar en las tablas HTML existentes en la página
-      if (urls.length === 0) {
-        const links = document.querySelectorAll("a[href*='.pdf'], td");
-        links.forEach(l => {
-          const href = l.href || l.innerText;
-          if (href && href.startsWith("http") && href.includes(".pdf")) {
-            urls.push(href.trim());
-          }
-        });
-      }
-
-      return [...new Set(urls)]; // Eliminar duplicados
-    }
-
-    async function iniciarProcesamiento() {
-      const btn = document.getElementById("btnProcesar");
-      btn.disabled = true;
-      log("Iniciando análisis de enlaces...");
-
-      const listaPDFs = await obtenerListaURLs();
-
-      if (listaPDFs.length === 0) {
-        log("❌ ERROR: No se encontraron enlaces a archivos PDF en la tabla ni en el campo de texto.");
-        log("Por favor, pega las URLs directamente en el recuadro superior.");
-        btn.disabled = false;
+      if (!fileInput && !urlInput) {
+        alert("Por favor selecciona un archivo Excel/CSV o ingresa una URL de Google Sheets.");
         return;
       }
 
-      log(`Se detectaron ${listaPDFs.length} archivos para consolidar.`);
+      document.getElementById('statusCard').classList.remove('hidden');
+      log("Leyendo base de datos...");
 
       try {
-        const pdfFinal = await PDFLib.PDFDocument.create();
-        let exito = 0;
-
-        for (let i = 0; i < listaPDFs.length; i++) {
-          const url = listaPDFs[i];
-          log(`Procesando (${i + 1}/${listaPDFs.length}): ${url.substring(0, 60)}...`);
-
-          // Permitir renderizado de la consola de mensajes
-          await new Promise(r => setTimeout(r, 100));
-
-          try {
-            const buffer = await descargarPDFConTimeout(url);
-            const pdfDoc = await PDFLib.PDFDocument.load(buffer);
-            const paginas = await pdfFinal.copyPages(pdfDoc, pdfDoc.getPageIndices());
-            paginas.forEach(p => pdfFinal.addPage(p));
-            exito++;
-            log(`  ✓ Documento ${i + 1} consolidado.`);
-          } catch (err) {
-            log(`  ⚠ No se pudo procesar el archivo ${i + 1}. Generando página de aviso...`);
-            const pageErr = pdfFinal.addPage([600, 400]);
-            pageErr.drawText(`Error al cargar el documento #${i + 1}`, { x: 50, y: 300, size: 16 });
-            pageErr.drawText(`URL: ${url}`, { x: 50, y: 260, size: 10 });
-          }
+        if (fileInput) {
+          rawExcelData = await parseLocalFile(fileInput);
+        } else {
+          const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(urlInput)}`);
+          const text = await res.text();
+          rawExcelData = await new Promise(r => Papa.parse(text, { header: true, skipEmptyLines: true, complete: res => r(res.data) }));
         }
 
-        log("Generando archivo consolidado final...");
-        const pdfBytes = await pdfFinal.save();
-        download(pdfBytes, "PDF_Consolidado.pdf", "application/pdf");
-        log("✅ ¡PROCESO FINALIZADO! El archivo se ha descargado correctamente.");
+        if (!rawExcelData || rawExcelData.length === 0) throw new Error("No se encontraron registros en la base de datos.");
 
-      } catch (e) {
-        log(`❌ Error crítico durante la consolidación: ${e.message}`);
+        const columnas = Object.keys(rawExcelData[0]);
+        poblarSelectores(columnas);
+
+        document.getElementById('sectionMapping').classList.remove('hidden');
+        log(`Se cargaron ${rawExcelData.length} registros y ${columnas.length} columnas.`);
+
+      } catch (err) {
+        alert(`Error al leer archivo: ${err.message}`);
+        log(`ERROR: ${err.message}`);
+      }
+    }
+
+    function poblarSelectores(cols) {
+      ['selectColId', 'selectColRemitente', 'selectColDestinatario', 'selectColUrl'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        cols.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    function obtenerValoresSeleccionados(selectId) {
+      return Array.from(document.getElementById(selectId).selectedOptions).map(o => o.value);
+    }
+
+    function aplicarMapeoYVistaPrevia() {
+      const colsId = obtenerValoresSeleccionados('selectColId');
+      const colsRemitente = obtenerValoresSeleccionados('selectColRemitente');
+      const colsDestinatario = obtenerValoresSeleccionados('selectColDestinatario');
+      const colsUrl = obtenerValoresSeleccionados('selectColUrl');
+
+      if (colsUrl.length === 0) {
+        alert("Debes seleccionar la columna correspondiente a la URL del PDF.");
+        return;
+      }
+
+      datosProcesados = rawExcelData.map((reg, idx) => {
+        return {
+          index: idx + 1,
+          id: colsId.map(c => reg[c]).filter(Boolean).join(' - ') || `ID-${idx + 1}`,
+          remitente: colsRemitente.map(c => reg[c]).filter(Boolean).join(' ') || 'Sin Remitente',
+          destinatario: colsDestinatario.map(c => reg[c]).filter(Boolean).join(' ') || 'Sin Destinatario',
+          url: reg[colsUrl[0]] ? reg[colsUrl[0]].toString().trim() : ''
+        };
+      });
+
+      renderTablaPreview(datosProcesados);
+      document.getElementById('sectionStep2').classList.remove('disabled');
+      log("Mapeo guardado exitosamente.");
+    }
+
+    function renderTablaPreview(datos) {
+      const tbody = document.getElementById('previewBody');
+      tbody.innerHTML = '';
+      document.getElementById('totalRows').textContent = datos.length;
+
+      datos.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${d.index}</td>
+          <td><strong>${d.id}</strong></td>
+          <td>${d.remitente}</td>
+          <td>${d.destinatario}</td>
+          <td><a href="${d.url}" target="_blank">${d.url.substring(0, 40)}...</a></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('previewContainer').classList.remove('hidden');
+    }
+
+    function parseLocalFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]));
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function construirPaquetePDF() {
+      if (datosProcesados.length === 0) return;
+
+      const btn = document.getElementById('btnProcesar');
+      btn.disabled = true;
+      
+      document.getElementById('statusCard').classList.remove('hidden');
+      document.getElementById('statusTitle').textContent = `Compilando paquete PDF...`;
+      
+      const { PDFDocument, rgb, StandardFonts } = PDFLib;
+      const pdfConsolidado = await PDFDocument.create();
+      const fontBold = await pdfConsolidado.embedFont(StandardFonts.HelveticaBold);
+      const fontRegular = await pdfConsolidado.embedFont(StandardFonts.Helvetica);
+
+      const total = datosProcesados.length;
+
+      for (let i = 0; i < total; i++) {
+        const d = datosProcesados[i];
+        const percent = Math.round(((i + 1) / total) * 100);
+        document.getElementById('progressBar').style.width = `${percent}%`;
+        
+        log(`Procesando (${i+1}/${total}) - ID: ${d.id}...`);
+
+        // Pausa breve para permitir actualización visual de la pantalla
+        await new Promise(r => setTimeout(r, 15));
+
+        if (!d.url || !d.url.startsWith('http')) {
+          agregarHojaError(pdfConsolidado, d, "URL no válida o vacía", fontBold, fontRegular);
+          continue;
+        }
+
+        try {
+          const buffer = await descargarPDFSeguro(d.url);
+          const pdfSub = await PDFDocument.load(buffer, { ignoreEncryption: true });
+          const paginasCopiadas = await pdfConsolidado.copyPages(pdfSub, pdfSub.getPageIndices());
+
+          paginasCopiadas.forEach(page => {
+            const { width, height } = page.getSize();
+            page.drawRectangle({ x: 0, y: height - 22, width: width, height: 22, color: rgb(0.93, 0.93, 0.95) });
+            page.drawText(`ID: ${d.id} | DE: ${d.remitente} | PARA: ${d.destinatario}`, {
+              x: 10, y: height - 15, size: 8, font: fontBold, color: rgb(0.1, 0.1, 0.3)
+            });
+            pdfConsolidado.addPage(page);
+          });
+          log(`  ✓ ID ${d.id} agregado correctamente.`);
+
+        } catch (e) {
+          log(`  ⚠️ Error en ID ${d.id}: ${e.message}`);
+          agregarHojaError(pdfConsolidado, d, e.message, fontBold, fontRegular);
+        }
+      }
+
+      log('Generando archivo PDF final...');
+      
+      try {
+        const pdfBytes = await pdfConsolidado.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Paquete_PDF_Consolidado_${Date.now()}.pdf`;
+        link.click();
+
+        document.getElementById('statusTitle').textContent = "¡Proceso completado con éxito!";
+        log('✅ Descarga iniciada automáticamente.');
+      } catch (errSave) {
+        log(`❌ Error al generar el archivo final: ${errSave.message}`);
       } finally {
         btn.disabled = false;
       }
+    }
+
+    function agregarHojaError(pdfConsolidado, datos, errorMsg, fontBold, fontRegular) {
+      const { rgb } = PDFLib;
+      const page = pdfConsolidado.addPage([612, 792]);
+      
+      page.drawRectangle({ x: 0, y: 767, width: 612, height: 25, color: rgb(1, 0.9, 0.9) });
+      page.drawText(`ID: ${datos.id} | DE: ${datos.remitente} | PARA: ${datos.destinatario}`, {
+        x: 10, y: 775, size: 8, font: fontBold, color: rgb(0.7, 0.0, 0.0)
+      });
+
+      page.drawText('No se pudo incluir la carta de este registro', { x: 40, y: 680, size: 14, font: fontBold, color: rgb(0.8, 0, 0) });
+      page.drawText(`Causa: ${errorMsg}`, { x: 40, y: 650, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+      page.drawText(`URL registrada: ${datos.url || 'Sin URL'}`, { x: 40, y: 620, size: 9, font: fontRegular, color: rgb(0, 0, 0.8) });
     }
   </script>
 </body>
