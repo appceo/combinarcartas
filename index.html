@@ -2,130 +2,145 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Generador de PDF Consolidado</title>
-  <!-- Librerías para manipulación de PDF -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combinador de PDF Consolidado</title>
+  <!-- Librerías requeridas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    textarea { width: 100%; height: 100px; margin-top: 10px; font-family: monospace; }
+    button { background-color: #00a65a; color: white; border: none; padding: 12px 20px; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    button:disabled { background-color: #cccccc; cursor: not-allowed; }
+    #logConsole { background: #0a1128; color: #00ff88; font-family: monospace; padding: 15px; height: 250px; overflow-y: auto; border-radius: 6px; margin-top: 15px; }
+  </style>
 </head>
 <body>
 
-  <button id="btnProcesar" onclick="procesarYCrearPDFConsolidado()">
-    Procesar y Crear PDF Consolidado
-  </button>
+  <div class="card">
+    <h2>1. Pegar URLs de los PDF (una por línea) o datos de la tabla</h2>
+    <p>Pega directamente las URLs del servidor <code>igleco.com</code> o el listado de enlaces:</p>
+    <textarea id="txtUrls" placeholder="https://igleco.com/wp-content/uploads/2024/01/documento1.pdf&#10;https://igleco.com/wp-content/uploads/2024/01/documento2.pdf"></textarea>
+  </div>
 
-  <div id="status">Procesando...</div>
-  <div id="logConsole" style="background: #0a1128; color: #00ff88; font-family: monospace; padding: 15px; height: 250px; overflow-y: auto;">
-    > Esperando inicio del proceso...
+  <div class="card">
+    <h2>2. Generar Paquete PDF Consolidado</h2>
+    <button id="btnProcesar" onclick="iniciarProcesamiento()">Procesar y Crear PDF Consolidado</button>
+    <div id="logConsole">> Sistema listo. Ingrese las URLs o presione procesar si la tabla ya está cargada.</div>
   </div>
 
   <script>
-    // Lista de proxies CORS públicos para reintentos automáticos
-    const CORS_PROXIES = [
+    const PROXIES = [
       url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
       url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-      url => `https://thingproxy.freeboard.io/fetch/${url}`,
-      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+      url => `https://thingproxy.freeboard.io/fetch/${url}`
     ];
 
-    function logMessage(texto) {
+    function log(msg) {
       const consoleDiv = document.getElementById("logConsole");
-      consoleDiv.innerHTML += `<div>> ${texto}</div>`;
+      consoleDiv.innerHTML += `<div>> ${msg}</div>`;
       consoleDiv.scrollTop = consoleDiv.scrollHeight;
     }
 
-    // Función para descargar un arrayBuffer con timeout estricto de 5 segundos por proxy
-    async function fetchConTimeout(url, timeoutMs = 5000) {
-      // 1. Intento directo
+    async function descargarPDFConTimeout(url) {
+      // Intento 1: Descarga directa
       try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeoutMs);
-        const resp = await fetch(url, { signal: controller.signal });
-        clearTimeout(id);
-        if (resp.ok) return await resp.arrayBuffer();
-      } catch (e) {
-        // Falló directo, continuamos con proxies
-      }
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) return await res.arrayBuffer();
+      } catch (e) {}
 
-      // 2. Intentos con lista de proxies
-      for (const proxyFn of CORS_PROXIES) {
+      // Intento 2: Mediante Proxies para evitar bloqueo de GitHub Pages / CORS
+      for (const proxyFn of PROXIES) {
         try {
-          const targetUrl = proxyFn(url);
           const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), timeoutMs);
-          const resp = await fetch(targetUrl, { signal: controller.signal });
-          clearTimeout(id);
-          if (resp.ok) {
-            const buffer = await resp.arrayBuffer();
-            if (buffer && buffer.byteLength > 0) return buffer;
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          const res = await fetch(proxyFn(url), { signal: controller.signal });
+          clearTimeout(timeout);
+          if (res.ok) {
+            const buf = await res.arrayBuffer();
+            if (buf && buf.byteLength > 100) return buf;
           }
-        } catch (e) {
-          // Si expira o falla, intenta el siguiente proxy inmediatamente
-        }
+        } catch (e) {}
       }
-      throw new Error("No se pudo obtener el archivo mediante ningún método o proxy.");
+      throw new Error("No se pudo obtener el archivo por restricciones de red/CORS");
     }
 
-    async function procesarYCrearPDFConsolidado() {
+    async function obtenerListaURLs() {
+      let urls = [];
+      
+      // 1. Verificar si hay datos en el cuadro de texto
+      const txt = document.getElementById("txtUrls").value.trim();
+      if (txt.length > 0) {
+        urls = txt.split("\n").map(u => u.trim()).filter(u => u.startsWith("http"));
+      }
+
+      // 2. Si no hay en el cuadro de texto, buscar en las tablas HTML existentes en la página
+      if (urls.length === 0) {
+        const links = document.querySelectorAll("a[href*='.pdf'], td");
+        links.forEach(l => {
+          const href = l.href || l.innerText;
+          if (href && href.startsWith("http") && href.includes(".pdf")) {
+            urls.push(href.trim());
+          }
+        });
+      }
+
+      return [...new Set(urls)]; // Eliminar duplicados
+    }
+
+    async function iniciarProcesamiento() {
       const btn = document.getElementById("btnProcesar");
       btn.disabled = true;
-      logMessage("Iniciando proceso de consolidación...");
+      log("Iniciando análisis de enlaces...");
 
-      // Supongamos que esta es tu lista de datos extraída de la tabla
-      // Reemplaza 'registros' con tu variable o arreglo de datos real
-      const registros = Array.from(document.querySelectorAll("tbody tr")).map(tr => {
-        const cols = tr.querySelectorAll("td");
-        return {
-          id: cols[1]?.innerText?.trim() || "N/A",
-          remitente: cols[2]?.innerText?.trim() || "Desconocido",
-          destinatario: cols[3]?.innerText?.trim() || "Desconocido",
-          url: cols[4]?.querySelector("a")?.href || cols[4]?.innerText?.trim()
-        };
-      }).filter(r => r.url && r.url.startsWith("http"));
+      const listaPDFs = await obtenerListaURLs();
 
-      if (registros.length === 0) {
-        logMessage("Error: No se encontraron registros válidos con URL.");
+      if (listaPDFs.length === 0) {
+        log("❌ ERROR: No se encontraron enlaces a archivos PDF en la tabla ni en el campo de texto.");
+        log("Por favor, pega las URLs directamente en el recuadro superior.");
         btn.disabled = false;
         return;
       }
 
-      logMessage(`Se detectaron ${registros.length} registros para procesar.`);
+      log(`Se detectaron ${listaPDFs.length} archivos para consolidar.`);
 
       try {
-        const pdfConsolidado = await PDFLib.PDFDocument.create();
+        const pdfFinal = await PDFLib.PDFDocument.create();
+        let exito = 0;
 
-        for (let i = 0; i < registros.length; i++) {
-          const item = registros[i];
-          logMessage(`Procesando (${i + 1}/${registros.length}) - ID: ${item.id}...`);
+        for (let i = 0; i < listaPDFs.length; i++) {
+          const url = listaPDFs[i];
+          log(`Procesando (${i + 1}/${listaPDFs.length}): ${url.substring(0, 60)}...`);
 
-          // Permitir que el navegador actualice el DOM antes de la siguiente descarga
+          // Permitir renderizado de la consola de mensajes
           await new Promise(r => setTimeout(r, 100));
 
           try {
-            const buffer = await fetchConTimeout(item.url, 5000);
-            const pdfSub = await PDFLib.PDFDocument.load(buffer);
-            const paginasCopiadas = await pdfConsolidado.copyPages(pdfSub, pdfSub.getPageIndices());
-            paginasCopiadas.forEach(page => pdfConsolidado.addPage(page));
-            logMessage(`✓ ID ${item.id}: Agregado exitosamente.`);
+            const buffer = await descargarPDFConTimeout(url);
+            const pdfDoc = await PDFLib.PDFDocument.load(buffer);
+            const paginas = await pdfFinal.copyPages(pdfDoc, pdfDoc.getPageIndices());
+            paginas.forEach(p => pdfFinal.addPage(p));
+            exito++;
+            log(`  ✓ Documento ${i + 1} consolidado.`);
           } catch (err) {
-            logMessage(`⚠ ID ${item.id}: Error al descargar (${err.message}). Creando página de notificación...`);
-            
-            // Si el archivo falla o da timeout, crea una página informativa en vez de detener todo el programa
-            const errorPage = pdfConsolidado.addPage([600, 400]);
-            errorPage.drawText(`No se pudo consolidar el documento ID: ${item.id}`, { x: 50, y: 320, size: 16 });
-            errorPage.drawText(`Remitente: ${item.remitente}`, { x: 50, y: 280, size: 12 });
-            errorPage.drawText(`Destinatario: ${item.destinatario}`, { x: 50, y: 260, size: 12 });
-            errorPage.drawText(`URL de origen: ${item.url}`, { x: 50, y: 240, size: 10 });
-            errorPage.drawText(`Motivo: El servidor no respondió a tiempo o bloqueó el acceso.`, { x: 50, y: 200, size: 10 });
+            log(`  ⚠ No se pudo procesar el archivo ${i + 1}. Generando página de aviso...`);
+            const pageErr = pdfFinal.addPage([600, 400]);
+            pageErr.drawText(`Error al cargar el documento #${i + 1}`, { x: 50, y: 300, size: 16 });
+            pageErr.drawText(`URL: ${url}`, { x: 50, y: 260, size: 10 });
           }
         }
 
-        logMessage("Finalizando y generando archivo PDF consolidado...");
-        const pdfBytes = await pdfConsolidado.save();
-        download(pdfBytes, "Paquete_PDF_Consolidado.pdf", "application/pdf");
-        logMessage("¡Proceso completado exitosamente! El archivo se ha descargado.");
+        log("Generando archivo consolidado final...");
+        const pdfBytes = await pdfFinal.save();
+        download(pdfBytes, "PDF_Consolidado.pdf", "application/pdf");
+        log("✅ ¡PROCESO FINALIZADO! El archivo se ha descargado correctamente.");
 
       } catch (e) {
-        logMessage(`Error crítico en la ejecución: ${e.message}`);
+        log(`❌ Error crítico durante la consolidación: ${e.message}`);
       } finally {
         btn.disabled = false;
       }
