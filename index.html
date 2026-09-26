@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unificador de Cartas y Documentos</title>
+    <title>Unificador de Cartas desde ZIP</title>
     
-    <!-- Librería PDF-Lib para procesamiento y manipulación vectorial de PDF -->
+    <!-- JSZip para descomprimir archivos ZIP en el navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- PDF-Lib para manipulacion y generacion del PDF final -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
     <style>
@@ -30,11 +33,11 @@
 
         .container {
             width: 100%;
-            max-width: 850px;
+            max-width: 800px;
             background-color: var(--card-bg);
             padding: 32px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         h1 { margin-top: 0; color: #0f172a; font-size: 1.75rem; margin-bottom: 8px; }
@@ -42,19 +45,9 @@
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; }
 
-        input[type="url"], input[type="file"] {
+        input[type="file"] {
             width: 100%; padding: 12px; border: 1px solid var(--border-color);
             border-radius: 6px; box-sizing: border-box; font-size: 0.95rem;
-        }
-
-        .divider { text-align: center; margin: 20px 0; position: relative; }
-        .divider::before {
-            content: ""; position: absolute; top: 50%; left: 0; right: 0;
-            height: 1px; background-color: var(--border-color); z-index: 1;
-        }
-        .divider span {
-            background-color: var(--card-bg); padding: 0 12px; position: relative;
-            z-index: 2; color: #94a3b8; font-size: 0.85rem; font-weight: 600;
         }
 
         button {
@@ -66,11 +59,11 @@
         button:disabled { background-color: #94a3b8; cursor: not-allowed; }
 
         .status-box { margin-top: 24px; padding: 16px; border-radius: 6px; background-color: #f1f5f9; display: none; }
-        .progress-bar-container { width: 100%; background-color: #e2e8f0; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
-        .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.2s ease; }
+        .progress-bar-container { width: 100%; background-color: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
+        .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.2s; }
         .log-list {
             margin-top: 12px; max-height: 200px; overflow-y: auto; font-family: monospace;
-            font-size: 0.85rem; color: #334155; background: #fff; padding: 10px;
+            font-size: 0.85rem; color: #334155; background: #fff; padding: 8px;
             border: 1px solid var(--border-color); border-radius: 4px;
         }
     </style>
@@ -78,22 +71,15 @@
 <body>
 
 <div class="container">
-    <h1>Unificador de Cartas y Documentos</h1>
-    <p class="subtitle">Descarga, unifica y etiqueta todas las cartas (PDF o imagen) contenidas en la tabla de datos en un único archivo PDF.</p>
+    <h1>Unificador de Cartas (Paso 2)</h1>
+    <p class="subtitle">Seleccione el archivo .ZIP comprimido que contiene las cartas para generar el PDF unificado.</p>
 
     <div class="form-group">
-        <label for="csvUrl">URL de la Tabla de Datos (Google Sheets / CSV)</label>
-        <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv">
+        <label for="zipFile">Archivo ZIP con los Documentos</label>
+        <input type="file" id="zipFile" accept=".zip">
     </div>
 
-    <div class="divider"><span>O CARGAR ARCHIVO CSV LOCAL</span></div>
-
-    <div class="form-group">
-        <label for="csvFile">Archivo CSV Local de la Tabla de Datos</label>
-        <input type="file" id="csvFile" accept=".csv, .txt">
-    </div>
-
-    <button id="processBtn" onclick="procesarDocumentos()">Generar PDF Unificado</button>
+    <button id="processBtn" onclick="procesarZip()">Descomprimir y Generar PDF</button>
 
     <div id="statusBox" class="status-box">
         <span id="statusText">Iniciando proceso...</span>
@@ -121,215 +107,110 @@
         }
     }
 
-    // Convierte URLs de edición de Google Sheets en enlaces de descarga directa CSV
-    function optimizarUrlGoogleSheets(url) {
-        if (url.includes('docs.google.com/spreadsheets')) {
-            return url.replace(/\/edit(\?.*)?$/, '/export?format=csv');
-        }
-        return url;
-    }
-
-    // Parser CSV avanzado para procesar adecuadamente delimitadores de coma o punto y coma
-    function parsearCSV(texto) {
-        const lineas = texto.split(/\r\n|\n/);
-        if (lineas.length === 0) return [];
-
-        const primeraLinea = lineas[0];
-        const delimitador = primeraLinea.includes(';') ? ';' : ',';
-
-        const encabezados = primeraLinea.split(delimitador).map(h => 
-            h.trim().replace(/^"|"$/g, '').replace(/^\uFEFF/, '').toUpperCase()
-        );
-
-        const resultados = [];
-        for (let i = 1; i < lineas.length; i++) {
-            const linea = lineas[i].trim();
-            if (!linea) continue;
-
-            const valores = linea.split(delimitador).map(v => v.trim().replace(/^"|"$/g, ''));
-            const registro = {};
-
-            encabezados.forEach((header, index) => {
-                registro[header] = valores[index] || '';
-            });
-
-            resultados.push(registro);
-        }
-
-        return resultados;
-    }
-
-    // Función encargada de descargar archivos evadiendo los bloqueos CORS del navegador
-    async function descargarDocumentoBypassCORS(urlOriginal) {
-        const urlLimpia = urlOriginal.replace(/\\/g, '').trim();
-
-        // Lista de estrategias en orden jerárquico de intentos
-        const estrategias = [
-            urlLimpia,                                                      // 1. Petición directa
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(urlLimpia)}`, // 2. Proxy AllOrigins
-            `https://corsproxy.io/?${encodeURIComponent(urlLimpia)}`              // 3. Proxy CORSProxy
-        ];
-
-        for (const urlIntento of estrategias) {
-            try {
-                const res = await fetch(urlIntento);
-                if (res.ok) {
-                    const arrayBuffer = await res.arrayBuffer();
-                    if (arrayBuffer.byteLength > 0) {
-                        return { arrayBuffer, contentType: res.headers.get('content-type') || '' };
-                    }
-                }
-            } catch (e) {
-                // Si la estrategia falla, continua con la siguiente opción del arreglo
-            }
-        }
-        throw new Error(`No fue posible descargar la carta debido a bloqueos de seguridad CORS en el servidor remoto (${urlLimpia}).`);
-    }
-
-    async function procesarDocumentos() {
-        let csvUrl = document.getElementById('csvUrl').value.trim();
-        const csvFileInput = document.getElementById('csvFile').files[0];
+    async function procesarZip() {
+        const zipInput = document.getElementById('zipFile').files[0];
         const btn = document.getElementById('processBtn');
 
-        if (!csvUrl && !csvFileInput) {
-            alert("Por favor ingrese la URL o seleccione un archivo CSV local.");
+        if (!zipInput) {
+            alert("Por favor seleccione un archivo .ZIP.");
             return;
         }
 
         btn.disabled = true;
         document.getElementById('statusBox').style.display = 'block';
         document.getElementById('logList').innerHTML = '';
-        actualizarProgreso(0, "Obteniendo datos de la tabla...");
+        actualizarProgreso(0, "Leyendo archivo ZIP en memoria...");
 
         try {
-            let csvContent = "";
-            if (csvFileInput) {
-                csvContent = await csvFileInput.text();
-            } else {
-                csvUrl = optimizarUrlGoogleSheets(csvUrl);
-                const response = await fetch(csvUrl);
-                if (!response.ok) throw new Error("No se pudo descargar la tabla. Asegúrese de que el archivo sea público o utilice la opción de cargar archivo local.");
-                csvContent = await response.text();
-            }
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(zipInput);
+            
+            const archivos = [];
+            zipContent.forEach((relativePath, zipEntry) => {
+                if (!zipEntry.dir) {
+                    archivos.push(zipEntry);
+                }
+            });
 
-            const registros = parsearCSV(csvContent);
-            if (!registros || registros.length === 0) {
-                throw new Error("No se detectaron registros válidos dentro del archivo de datos.");
-            }
+            log(`Se encontraron ${archivos.length} archivos dentro del ZIP.`);
 
-            log(`Se encontraron ${registros.length} registros para procesar.`);
-
-            // Creación del documento PDF unificado
             const pdfUnificado = await PDFLib.PDFDocument.create();
             const helveticaFont = await pdfUnificado.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
-            for (let i = 0; i < registros.length; i++) {
-                const fila = registros[i];
+            for (let i = 0; i < archivos.length; i++) {
+                const archivo = archivos[i];
+                const nombreArchivo = archivo.name.split('/').pop();
+                
+                const porcentaje = Math.round(((i) / archivos.length) * 100);
+                actualizarProgreso(porcentaje, `Procesando (${i + 1}/${archivos.length}): ${nombreArchivo}...`);
 
-                const idEntrada = fila['ID DE ENTRADA'] || fila['ID ENTRADA'] || fila['ID'] || `Reg-${i+1}`;
-                const nombreDest = fila['NOMBRE DESTINATARIO'] || '';
-                const apellidoDest = fila['APELLIDO DESTINATARIO'] || fila['APELLIDOS DESTINATARIO'] || '';
-                const nombreRem = fila['NOMBRE REMITENTE'] || '';
-                const apellidoRem = fila['APELLIDOS REMITENTE'] || fila['APELLIDO REMITENTE'] || '';
-                const cartaUrl = fila['CARTA'] || fila['URL'] || fila['CARTA URL'];
+                // Formato esperado: ID_Remitente_Destinatario.ext
+                const partes = nombreArchivo.replace(/\.[^/.]+$/, "").split('_');
+                const idEntrada = partes[0] || 'N/A';
+                const remitente = partes[1] || 'Sin Nombre';
+                const destinatario = partes[2] || 'Sin Nombre';
 
-                const destinatarioCompleto = `${nombreDest} ${apellidoDest}`.trim();
-                const remitenteCompleto = `${nombreRem} ${apellidoRem}`.trim();
+                const textoEtiqueta = `ID Entrada: ${idEntrada} | Remitente: ${remitente} | Destinatario: ${destinatario}`;
 
-                const porcentaje = Math.round(((i) / registros.length) * 100);
-                actualizarProgreso(porcentaje, `Procesando registro ${i + 1} de ${registros.length} (ID: ${idEntrada})...`);
+                const arrayBuffer = await archivo.async("arraybuffer");
+                const extension = nombreArchivo.split('.').pop().toLowerCase();
 
-                if (!cartaUrl) {
-                    log(`ADVERTENCIA: El registro ID ${idEntrada} no contiene URL en la columna CARTA. Se omitirá.`);
-                    continue;
-                }
+                if (extension === 'pdf') {
+                    const pdfFuente = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+                    const paginasCopiadas = await pdfUnificado.copyPages(pdfFuente, pdfFuente.getPageIndices());
 
-                try {
-                    // Descargar el archivo con el sistema de bypass Anti-CORS
-                    const { arrayBuffer, contentType } = await descargarDocumentoBypassCORS(cartaUrl);
-                    
-                    const urlSinParams = cartaUrl.toLowerCase().split('?')[0];
-                    const isPdf = urlSinParams.endsWith('.pdf') || contentType.includes('pdf');
-                    const isPng = urlSinParams.endsWith('.png') || contentType.includes('png');
-                    const isJpg = urlSinParams.match(/\.(jpeg|jpg)$/) || contentType.includes('jpg') || contentType.includes('jpeg');
-
-                    const textoEtiqueta = `ID Entrada: ${idEntrada} | Remitente: ${remitenteCompleto} | Destinatario: ${destinatarioCompleto}`;
-
-                    if (isPdf) {
-                        // Procesar archivo PDF
-                        const pdfFuente = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-                        const paginasCopiadas = await pdfUnificado.copyPages(pdfFuente, pdfFuente.getPageIndices());
-
-                        paginasCopiadas.forEach(pagina => {
-                            pdfUnificado.addPage(pagina);
-                            const { width } = pagina.getSize();
-                            
-                            // Colocar etiqueta en la parte inferior de la página
-                            pagina.drawRectangle({
-                                x: 0, y: 0, width: width, height: 26,
-                                color: PDFLib.rgb(0.93, 0.93, 0.93), opacity: 0.95
-                            });
-
-                            pagina.drawText(textoEtiqueta, {
-                                x: 12, y: 8, size: 8.5,
-                                font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
-                            });
-                        });
-
-                    } else if (isPng || isJpg || contentType.includes('image')) {
-                        // Procesar Imagen (JPG / PNG)
-                        let imagenEmbed;
-                        if (isPng) {
-                            imagenEmbed = await pdfUnificado.embedPng(arrayBuffer);
-                        } else {
-                            imagenEmbed = await pdfUnificado.embedJpg(arrayBuffer);
-                        }
-
-                        // Crear página ajustada al tamaño de la imagen agregando espacio para la etiqueta
-                        const pagina = pdfUnificado.addPage([imagenEmbed.width, imagenEmbed.height + 30]);
-                        pagina.drawImage(imagenEmbed, {
-                            x: 0, y: 30, width: imagenEmbed.width, height: imagenEmbed.height
-                        });
-
+                    paginasCopiadas.forEach(pagina => {
+                        pdfUnificado.addPage(pagina);
+                        const { width } = pagina.getSize();
+                        
                         pagina.drawRectangle({
-                            x: 0, y: 0, width: imagenEmbed.width, height: 30,
-                            color: PDFLib.rgb(0.93, 0.93, 0.93)
+                            x: 0, y: 0, width: width, height: 25,
+                            color: PDFLib.rgb(0.93, 0.93, 0.93), opacity: 0.95
                         });
 
                         pagina.drawText(textoEtiqueta, {
-                            x: 15, y: 10, size: 9.5,
+                            x: 12, y: 8, size: 8.5,
                             font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
                         });
+                    });
 
+                } else if (['jpg', 'jpeg', 'png'].includes(extension)) {
+                    let imagenEmbed;
+                    if (extension === 'png') {
+                        imagenEmbed = await pdfUnificado.embedPng(arrayBuffer);
                     } else {
-                        // Intento secundario de cargarlo como PDF si el formato no es reconocido explícitamente
-                        try {
-                            const pdfFuente = await PDFLib.PDFDocument.load(arrayBuffer);
-                            const paginasCopiadas = await pdfUnificado.copyPages(pdfFuente, pdfFuente.getPageIndices());
-                            paginasCopiadas.forEach(pagina => pdfUnificado.addPage(pagina));
-                        } catch (e) {
-                            log(`Formato no compatible para ID ${idEntrada}: ${cartaUrl}`);
-                        }
+                        imagenEmbed = await pdfUnificado.embedJpg(arrayBuffer);
                     }
 
-                } catch (err) {
-                    log(`ERROR al descargar/procesar ID ${idEntrada}: ${err.message}`);
+                    const pagina = pdfUnificado.addPage([imagenEmbed.width, imagenEmbed.height + 30]);
+                    pagina.drawImage(imagenEmbed, {
+                        x: 0, y: 30, width: imagenEmbed.width, height: imagenEmbed.height
+                    });
+
+                    pagina.drawRectangle({
+                        x: 0, y: 0, width: imagenEmbed.width, height: 30,
+                        color: PDFLib.rgb(0.93, 0.93, 0.93)
+                    });
+
+                    pagina.drawText(textoEtiqueta, {
+                        x: 15, y: 10, size: 9.5,
+                        font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
+                    });
                 }
             }
 
-            actualizarProgreso(98, "Generando el documento PDF final unificado...");
+            actualizarProgreso(98, "Compilando PDF unificado final...");
             const pdfBytes = await pdfUnificado.save();
 
-            // Descarga del archivo final generado
             const blobFinal = new Blob([pdfBytes], { type: 'application/pdf' });
             const linkDescarga = document.createElement('a');
             linkDescarga.href = URL.createObjectURL(blobFinal);
-            linkDescarga.download = `Cartas_Unificadas_Completas_${new Date().toISOString().slice(0,10)}.pdf`;
+            linkDescarga.download = `Cartas_Unificadas_${new Date().toISOString().slice(0,10)}.pdf`;
             document.body.appendChild(linkDescarga);
             linkDescarga.click();
             document.body.removeChild(linkDescarga);
 
-            actualizarProgreso(100, `¡Proceso finalizado con éxito! PDF unificado generado.`);
+            actualizarProgreso(100, "¡Proceso completado con éxito!");
 
         } catch (error) {
             actualizarProgreso(0, `Error general: ${error.message}`);
