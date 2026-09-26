@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unificador de Cartas y Documentos - 2 Pasos</title>
+    <title>Unificador Ultra Rápido de Cartas</title>
     
-    <!-- JSZip para comprimir y descomprimir archivos ZIP en el navegador -->
+    <!-- JSZip para compresión y descompresión ultrarrápida -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
-    <!-- PDF-Lib para generación del documento PDF unificado final -->
+    <!-- PDF-Lib para manipulacion y unificacion de PDF -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
     <style>
@@ -43,7 +43,6 @@
         h1 { margin-top: 0; color: #0f172a; font-size: 1.75rem; margin-bottom: 8px; }
         p.subtitle { color: #64748b; margin-bottom: 24px; font-size: 0.95rem; }
 
-        /* Pestañas / Pasos */
         .tabs {
             display: flex;
             border-bottom: 2px solid var(--border-color);
@@ -100,7 +99,7 @@
 
         .status-box { margin-top: 24px; padding: 16px; border-radius: 6px; background-color: #f1f5f9; display: none; }
         .progress-bar-container { width: 100%; background-color: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
-        .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.2s; }
+        .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.15s ease; }
         .log-list {
             margin-top: 12px; max-height: 180px; overflow-y: auto; font-family: monospace;
             font-size: 0.85rem; color: #334155; background: #fff; padding: 8px;
@@ -111,16 +110,16 @@
 <body>
 
 <div class="container">
-    <h1>Unificador de Cartas y Documentos</h1>
-    <p class="subtitle">Procesamiento seguro en 2 pasos para empaquetar y unificar todas las cartas de la base de datos.</p>
+    <h1>Unificador Ultra Rápido de Cartas</h1>
+    <p class="subtitle">Procesamiento paralelo optimizado de alto rendimiento.</p>
 
-    <!-- Pestañas de Navegación -->
+    <!-- Navegación de Pasos -->
     <div class="tabs">
         <button class="tab-btn active" onclick="cambiarPaso(1)">PASO 1: Descargar Cartas en ZIP</button>
         <button class="tab-btn" onclick="cambiarPaso(2)">PASO 2: Generar PDF Unificado</button>
     </div>
 
-    <!-- PASO 1: DESCARGA Y EMPAQUETADO EN ZIP -->
+    <!-- PASO 1 -->
     <div id="paso1" class="tab-content active">
         <div class="form-group">
             <label for="csvUrl">URL de la Tabla de Datos (Google Sheets / CSV)</label>
@@ -130,24 +129,24 @@
         <div class="divider"><span>O CARGAR ARCHIVO CSV LOCAL</span></div>
 
         <div class="form-group">
-            <label for="csvFile">Archivo CSV de la Tabla de Datos</label>
+            <label for="csvFile">Archivo CSV Local de la Tabla de Datos</label>
             <input type="file" id="csvFile" accept=".csv, .txt">
         </div>
 
-        <button id="btnPaso1" class="action-btn" onclick="ejecutarPaso1()">Iniciar Descarga y Crear Paquete ZIP</button>
+        <button id="btnPaso1" class="action-btn" onclick="ejecutarPaso1()">Descargar Lote de Cartas (Rápido)</button>
     </div>
 
-    <!-- PASO 2: DESCOMPRESIÓN Y CREACIÓN DE PDF UNIFICADO -->
+    <!-- PASO 2 -->
     <div id="paso2" class="tab-content">
         <div class="form-group">
             <label for="zipFile">Seleccione el Paquete ZIP Generado en el Paso 1</label>
             <input type="file" id="zipFile" accept=".zip">
         </div>
 
-        <button id="btnPaso2" class="action-btn" onclick="ejecutarPaso2()">Descomprimir y Generar PDF Unificado</button>
+        <button id="btnPaso2" class="action-btn" onclick="ejecutarPaso2()">Generar PDF Unificado al Instante</button>
     </div>
 
-    <!-- Panel de Progreso y Registro de Operaciones -->
+    <!-- Estado y Logs -->
     <div id="statusBox" class="status-box">
         <span id="statusText">Iniciando proceso...</span>
         <div class="progress-bar-container">
@@ -159,12 +158,8 @@
 
 <script>
     function cambiarPaso(paso) {
-        document.querySelectorAll('.tab-btn').forEach((btn, index) => {
-            btn.classList.toggle('active', index === (paso - 1));
-        });
-        document.querySelectorAll('.tab-content').forEach((content, index) => {
-            content.classList.toggle('active', index === (paso - 1));
-        });
+        document.querySelectorAll('.tab-btn').forEach((btn, idx) => btn.classList.toggle('active', idx === (paso - 1)));
+        document.querySelectorAll('.tab-content').forEach((content, idx) => content.classList.toggle('active', idx === (paso - 1)));
         document.getElementById('statusBox').style.display = 'none';
     }
 
@@ -207,27 +202,33 @@
         return resultados;
     }
 
-    async function descargarDocumentoBypass(urlOriginal) {
+    // Descarga Anti-CORS ultrarrápida con Timeout
+    async function descargarDocumentoFast(urlOriginal) {
         const urlLimpia = urlOriginal.replace(/\\/g, '').trim();
         const estrategias = [
             urlLimpia,
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(urlLimpia)}`,
-            `https://corsproxy.io/?${encodeURIComponent(urlLimpia)}`
+            `https://corsproxy.io/?${encodeURIComponent(urlLimpia)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(urlLimpia)}`
         ];
 
         for (const urlIntento of estrategias) {
             try {
-                const res = await fetch(urlIntento);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000); // Max 8s por intento
+
+                const res = await fetch(urlIntento, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
                 if (res.ok) {
                     const blob = await res.blob();
                     if (blob.size > 0) return blob;
                 }
             } catch (e) {}
         }
-        throw new Error(`Error de conexión/CORS al descargar: ${urlLimpia}`);
+        throw new Error(`Fallo en descarga: ${urlLimpia}`);
     }
 
-    // --- LÓGICA PASO 1 ---
+    // PASO 1: Descargas Paralelas por Lotes
     async function ejecutarPaso1() {
         let csvUrl = document.getElementById('csvUrl').value.trim();
         const csvFileInput = document.getElementById('csvFile').files[0];
@@ -241,7 +242,7 @@
         btn.disabled = true;
         document.getElementById('statusBox').style.display = 'block';
         document.getElementById('logList').innerHTML = '';
-        actualizarProgreso(0, "Obteniendo datos de la tabla...");
+        actualizarProgreso(0, "Leyendo tabla de datos...");
 
         try {
             let csvContent = "";
@@ -252,59 +253,65 @@
                     csvUrl = csvUrl.replace(/\/edit(\?.*)?$/, '/export?format=csv');
                 }
                 const response = await fetch(csvUrl);
-                if (!response.ok) throw new Error("No se pudo descargar la tabla CSV.");
+                if (!response.ok) throw new Error("No se pudo descargar el CSV.");
                 csvContent = await response.text();
             }
 
             const registros = parsearCSV(csvContent);
-            if (!registros || registros.length === 0) throw new Error("No se encontraron registros.");
+            if (!registros || registros.length === 0) throw new Error("Tabla sin registros.");
 
-            log(`Se leyeron ${registros.length} registros. Iniciando empaquetado ZIP...`);
-
+            log(`Procesando ${registros.length} registros en paralelo...`);
             const zip = new JSZip();
 
-            for (let i = 0; i < registros.length; i++) {
-                const fila = registros[i];
-                const idEntrada = fila['ID DE ENTRADA'] || fila['ID ENTRADA'] || fila['ID'] || `${i+1}`;
-                const nombreDest = fila['NOMBRE DESTINATARIO'] || '';
-                const apellidoDest = fila['APELLIDO DESTINATARIO'] || fila['APELLIDOS DESTINATARIO'] || '';
-                const nombreRem = fila['NOMBRE REMITENTE'] || '';
-                const apellidoRem = fila['APELLIDOS REMITENTE'] || fila['APELLIDO REMITENTE'] || '';
-                const cartaUrl = fila['CARTA'] || fila['URL'] || fila['CARTA URL'];
+            const CONCURRENCIA = 8; // 8 descargas simultáneas
+            let completados = 0;
 
-                const dest = `${nombreDest} ${apellidoDest}`.trim().replace(/[/\\?%*:|"<>]/g, '');
-                const rem = `${nombreRem} ${apellidoRem}`.trim().replace(/[/\\?%*:|"<>]/g, '');
+            for (let i = 0; i < registros.length; i += CONCURRENCIA) {
+                const lote = registros.slice(i, i + CONCURRENCIA);
 
-                const porcentaje = Math.round(((i) / registros.length) * 100);
-                actualizarProgreso(porcentaje, `Descargando registro ${i + 1} de ${registros.length} (ID: ${idEntrada})...`);
+                await Promise.all(lote.map(async (fila, idxLote) => {
+                    const idxReal = i + idxLote;
+                    const idEntrada = fila['ID DE ENTRADA'] || fila['ID ENTRADA'] || fila['ID'] || `${idxReal+1}`;
+                    const nombreDest = fila['NOMBRE DESTINATARIO'] || '';
+                    const apellidoDest = fila['APELLIDO DESTINATARIO'] || fila['APELLIDOS DESTINATARIO'] || '';
+                    const nombreRem = fila['NOMBRE REMITENTE'] || '';
+                    const apellidoRem = fila['APELLIDOS REMITENTE'] || fila['APELLIDO REMITENTE'] || '';
+                    const cartaUrl = fila['CARTA'] || fila['URL'] || fila['CARTA URL'];
 
-                if (!cartaUrl) continue;
+                    const dest = `${nombreDest} ${apellidoDest}`.trim().replace(/[/\\?%*:|"<>]/g, '');
+                    const rem = `${nombreRem} ${apellidoRem}`.trim().replace(/[/\\?%*:|"<>]/g, '');
 
-                try {
-                    const blob = await descargarDocumentoBypass(cartaUrl);
-                    const ext = cartaUrl.toLowerCase().split('?')[0].endsWith('.png') ? 'png' : 
-                               (cartaUrl.toLowerCase().split('?')[0].endsWith('.jpg') || cartaUrl.toLowerCase().split('?')[0].endsWith('.jpeg')) ? 'jpg' : 'pdf';
+                    if (cartaUrl) {
+                        try {
+                            const blob = await descargarDocumentoFast(cartaUrl);
+                            const urlLimpia = cartaUrl.toLowerCase().split('?')[0];
+                            const ext = urlLimpia.endsWith('.png') ? 'png' : 
+                                       (urlLimpia.endsWith('.jpg') || urlLimpia.endsWith('.jpeg')) ? 'jpg' : 'pdf';
 
-                    // Formato clave del nombre dentro del ZIP: ID___REMITENTE___DESTINATARIO.ext
-                    const nombreArchivoZip = `${idEntrada}___${rem}___${dest}.${ext}`;
-                    zip.file(nombreArchivoZip, blob);
+                            const nombreArchivoZip = `${idEntrada}___${rem}___${dest}.${ext}`;
+                            zip.file(nombreArchivoZip, blob);
+                        } catch (err) {
+                            log(`[OMITIDO] Error ID ${idEntrada}: ${err.message}`);
+                        }
+                    }
 
-                } catch (err) {
-                    log(`ERROR al descargar carta para ID ${idEntrada}: ${err.message}`);
-                }
+                    completados++;
+                    const porcentaje = Math.round((completados / registros.length) * 100);
+                    actualizarProgreso(porcentaje, `Descargadas ${completados} de ${registros.length} cartas...`);
+                }));
             }
 
-            actualizarProgreso(95, "Comprimiendo archivo ZIP...");
-            const zipContent = await zip.generateAsync({ type: "blob" });
+            actualizarProgreso(95, "Creando paquete ZIP...");
+            const zipContent = await zip.generateAsync({ type: "blob", compression: "STORE" }); // Sin compresión pesada para máximo rendimiento
 
             const linkDescarga = document.createElement('a');
             linkDescarga.href = URL.createObjectURL(zipContent);
-            linkDescarga.download = `Paquete_Cartas_Descargadas.zip`;
+            linkDescarga.download = `Paquete_Cartas.zip`;
             document.body.appendChild(linkDescarga);
             linkDescarga.click();
             document.body.removeChild(linkDescarga);
 
-            actualizarProgreso(100, "¡Paso 1 completado! Guarde el archivo ZIP y pase al PASO 2.");
+            actualizarProgreso(100, "¡Paso 1 Completado! Guarde el archivo ZIP y proceda al PASO 2.");
 
         } catch (error) {
             actualizarProgreso(0, `Error en Paso 1: ${error.message}`);
@@ -313,7 +320,7 @@
         }
     }
 
-    // --- LÓGICA PASO 2 ---
+    // PASO 2: Unificación Ultra Rápida
     async function ejecutarPaso2() {
         const zipInput = document.getElementById('zipFile').files[0];
         const btn = document.getElementById('btnPaso2');
@@ -326,7 +333,7 @@
         btn.disabled = true;
         document.getElementById('statusBox').style.display = 'block';
         document.getElementById('logList').innerHTML = '';
-        actualizarProgreso(0, "Descomprimiendo archivo ZIP en memoria...");
+        actualizarProgreso(0, "Descomprimiendo paquete ZIP en memoria...");
 
         try {
             const zip = new JSZip();
@@ -337,7 +344,7 @@
                 if (!zipEntry.dir) archivos.push(zipEntry);
             });
 
-            log(`Se encontraron ${archivos.length} cartas dentro del paquete ZIP.`);
+            log(`Compilando ${archivos.length} archivos en un solo PDF...`);
 
             const pdfUnificado = await PDFLib.PDFDocument.create();
             const helveticaFont = await pdfUnificado.embedFont(PDFLib.StandardFonts.HelveticaBold);
@@ -346,14 +353,13 @@
                 const archivo = archivos[i];
                 const nombreArchivo = archivo.name.split('/').pop();
 
-                const porcentaje = Math.round(((i) / archivos.length) * 100);
+                const porcentaje = Math.round(((i + 1) / archivos.length) * 100);
                 actualizarProgreso(porcentaje, `Unificando carta ${i + 1} de ${archivos.length}...`);
 
-                // Reconstrucción de la metadata desde el nombre de archivo dentro del ZIP
                 const partes = nombreArchivo.replace(/\.[^/.]+$/, "").split('___');
                 const idEntrada = partes[0] || 'N/A';
-                const remitente = partes[1] || 'No especificado';
-                const destinatario = partes[2] || 'No especificado';
+                const remitente = partes[1] || 'Sin Nombre';
+                const destinatario = partes[2] || 'Sin Nombre';
 
                 const textoEtiqueta = `ID Entrada: ${idEntrada} | Remitente: ${remitente} | Destinatario: ${destinatario}`;
 
@@ -380,12 +386,9 @@
                     });
 
                 } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
-                    let imagenEmbed;
-                    if (ext === 'png') {
-                        imagenEmbed = await pdfUnificado.embedPng(arrayBuffer);
-                    } else {
-                        imagenEmbed = await pdfUnificado.embedJpg(arrayBuffer);
-                    }
+                    let imagenEmbed = (ext === 'png') ? 
+                        await pdfUnificado.embedPng(arrayBuffer) : 
+                        await pdfUnificado.embedJpg(arrayBuffer);
 
                     const pagina = pdfUnificado.addPage([imagenEmbed.width, imagenEmbed.height + 30]);
                     pagina.drawImage(imagenEmbed, {
@@ -404,18 +407,18 @@
                 }
             }
 
-            actualizarProgreso(98, "Compilando PDF unificado final...");
+            actualizarProgreso(98, "Generando PDF final...");
             const pdfBytes = await pdfUnificado.save();
 
             const blobFinal = new Blob([pdfBytes], { type: 'application/pdf' });
             const linkDescarga = document.createElement('a');
             linkDescarga.href = URL.createObjectURL(blobFinal);
-            linkDescarga.download = `Cartas_Unificadas_Final.pdf`;
+            linkDescarga.download = `Cartas_Unificadas_Completo.pdf`;
             document.body.appendChild(linkDescarga);
             linkDescarga.click();
             document.body.removeChild(linkDescarga);
 
-            actualizarProgreso(100, "¡Proceso finalizado! El documento unificado se ha generado e impreso digitalmente en PDF.");
+            actualizarProgreso(100, "¡Listo! El documento PDF unificado ha sido generado.");
 
         } catch (error) {
             actualizarProgreso(0, `Error en Paso 2: ${error.message}`);
