@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unificador de Cartas y Documentos</title>
     
-    <!-- PDF-Lib para manipulación y unificación de documentos PDF -->
+    <!-- Librería PDF-Lib para procesamiento y manipulación vectorial de PDF -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
     <style>
@@ -30,7 +30,7 @@
 
         .container {
             width: 100%;
-            max-width: 800px;
+            max-width: 850px;
             background-color: var(--card-bg);
             padding: 32px;
             border-radius: 12px;
@@ -66,11 +66,11 @@
         button:disabled { background-color: #94a3b8; cursor: not-allowed; }
 
         .status-box { margin-top: 24px; padding: 16px; border-radius: 6px; background-color: #f1f5f9; display: none; }
-        .progress-bar-container { width: 100%; background-color: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
-        .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease; }
+        .progress-bar-container { width: 100%; background-color: #e2e8f0; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+        .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.2s ease; }
         .log-list {
-            margin-top: 12px; max-height: 180px; overflow-y: auto; font-family: monospace;
-            font-size: 0.85rem; color: #334155; background: #fff; padding: 8px;
+            margin-top: 12px; max-height: 200px; overflow-y: auto; font-family: monospace;
+            font-size: 0.85rem; color: #334155; background: #fff; padding: 10px;
             border: 1px solid var(--border-color); border-radius: 4px;
         }
     </style>
@@ -79,17 +79,17 @@
 
 <div class="container">
     <h1>Unificador de Cartas y Documentos</h1>
-    <p class="subtitle">Ingrese la URL de Google Sheets o cargue el archivo CSV descargado para compilar las cartas en PDF.</p>
+    <p class="subtitle">Descarga, unifica y etiqueta todas las cartas (PDF o imagen) contenidas en la tabla de datos en un único archivo PDF.</p>
 
     <div class="form-group">
-        <label for="csvUrl">URL de Google Sheets o Tabla CSV</label>
-        <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing">
+        <label for="csvUrl">URL de la Tabla de Datos (Google Sheets / CSV)</label>
+        <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv">
     </div>
 
-    <div class="divider"><span>O CARGAR ARCHIVO LOCAL (RECOMENDADO)</span></div>
+    <div class="divider"><span>O CARGAR ARCHIVO CSV LOCAL</span></div>
 
     <div class="form-group">
-        <label for="csvFile">Archivo CSV de la Tabla de Datos</label>
+        <label for="csvFile">Archivo CSV Local de la Tabla de Datos</label>
         <input type="file" id="csvFile" accept=".csv, .txt">
     </div>
 
@@ -121,7 +121,7 @@
         }
     }
 
-    // Convertir enlace normal de Google Sheets a exportación CSV directa
+    // Convierte URLs de edición de Google Sheets en enlaces de descarga directa CSV
     function optimizarUrlGoogleSheets(url) {
         if (url.includes('docs.google.com/spreadsheets')) {
             return url.replace(/\/edit(\?.*)?$/, '/export?format=csv');
@@ -129,18 +129,19 @@
         return url;
     }
 
-    // Parser CSV Nativo Inteligente (Soporta comas y punto y coma)
+    // Parser CSV avanzado para procesar adecuadamente delimitadores de coma o punto y coma
     function parsearCSV(texto) {
         const lineas = texto.split(/\r\n|\n/);
         if (lineas.length === 0) return [];
 
-        // Detectar delimitador (';' o ',')
         const primeraLinea = lineas[0];
         const delimitador = primeraLinea.includes(';') ? ';' : ',';
 
-        const encabezados = primeraLinea.split(delimitador).map(h => h.trim().replace(/^"|"$/g, '').toUpperCase());
-        const resultados = [];
+        const encabezados = primeraLinea.split(delimitador).map(h => 
+            h.trim().replace(/^"|"$/g, '').replace(/^\uFEFF/, '').toUpperCase()
+        );
 
+        const resultados = [];
         for (let i = 1; i < lineas.length; i++) {
             const linea = lineas[i].trim();
             if (!linea) continue;
@@ -149,15 +150,40 @@
             const registro = {};
 
             encabezados.forEach((header, index) => {
-                // Limpiar caracteres invisibles UTF-8 (BOM)
-                const headerLimpio = header.replace(/^\uFEFF/, '');
-                registro[headerLimpio] = valores[index] || '';
+                registro[header] = valores[index] || '';
             });
 
             resultados.push(registro);
         }
 
         return resultados;
+    }
+
+    // Función encargada de descargar archivos evadiendo los bloqueos CORS del navegador
+    async function descargarDocumentoBypassCORS(urlOriginal) {
+        const urlLimpia = urlOriginal.replace(/\\/g, '').trim();
+
+        // Lista de estrategias en orden jerárquico de intentos
+        const estrategias = [
+            urlLimpia,                                                      // 1. Petición directa
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(urlLimpia)}`, // 2. Proxy AllOrigins
+            `https://corsproxy.io/?${encodeURIComponent(urlLimpia)}`              // 3. Proxy CORSProxy
+        ];
+
+        for (const urlIntento of estrategias) {
+            try {
+                const res = await fetch(urlIntento);
+                if (res.ok) {
+                    const arrayBuffer = await res.arrayBuffer();
+                    if (arrayBuffer.byteLength > 0) {
+                        return { arrayBuffer, contentType: res.headers.get('content-type') || '' };
+                    }
+                }
+            } catch (e) {
+                // Si la estrategia falla, continua con la siguiente opción del arreglo
+            }
+        }
+        throw new Error(`No fue posible descargar la carta debido a bloqueos de seguridad CORS en el servidor remoto (${urlLimpia}).`);
     }
 
     async function procesarDocumentos() {
@@ -181,26 +207,25 @@
                 csvContent = await csvFileInput.text();
             } else {
                 csvUrl = optimizarUrlGoogleSheets(csvUrl);
-                log(`Consultando origen: ${csvUrl}`);
                 const response = await fetch(csvUrl);
-                if (!response.ok) throw new Error("No se pudo descargar la tabla. Verifique que la hoja de Google Sheets sea pública o use la carga de archivo local.");
+                if (!response.ok) throw new Error("No se pudo descargar la tabla. Asegúrese de que el archivo sea público o utilice la opción de cargar archivo local.");
                 csvContent = await response.text();
             }
 
             const registros = parsearCSV(csvContent);
             if (!registros || registros.length === 0) {
-                throw new Error("No se detectaron registros válidos en la tabla.");
+                throw new Error("No se detectaron registros válidos dentro del archivo de datos.");
             }
 
-            log(`Se leyeron correctamente ${registros.length} registros de la tabla.`);
+            log(`Se encontraron ${registros.length} registros para procesar.`);
 
+            // Creación del documento PDF unificado
             const pdfUnificado = await PDFLib.PDFDocument.create();
             const helveticaFont = await pdfUnificado.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
             for (let i = 0; i < registros.length; i++) {
                 const fila = registros[i];
 
-                // Búsqueda de claves de columna
                 const idEntrada = fila['ID DE ENTRADA'] || fila['ID ENTRADA'] || fila['ID'] || `Reg-${i+1}`;
                 const nombreDest = fila['NOMBRE DESTINATARIO'] || '';
                 const apellidoDest = fila['APELLIDO DESTINATARIO'] || fila['APELLIDOS DESTINATARIO'] || '';
@@ -215,83 +240,96 @@
                 actualizarProgreso(porcentaje, `Procesando registro ${i + 1} de ${registros.length} (ID: ${idEntrada})...`);
 
                 if (!cartaUrl) {
-                    log(`ADVERTENCIA: El registro ID ${idEntrada} no contiene enlace en la columna CARTA.`);
+                    log(`ADVERTENCIA: El registro ID ${idEntrada} no contiene URL en la columna CARTA. Se omitirá.`);
                     continue;
                 }
 
                 try {
-                    const docResp = await fetch(cartaUrl);
-                    if (!docResp.ok) throw new Error(`HTTP ${docResp.status}`);
+                    // Descargar el archivo con el sistema de bypass Anti-CORS
+                    const { arrayBuffer, contentType } = await descargarDocumentoBypassCORS(cartaUrl);
                     
-                    const blob = await docResp.blob();
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const urlLimpia = cartaUrl.toLowerCase().split('?')[0];
-
-                    const isPdf = urlLimpia.endsWith('.pdf') || blob.type.includes('pdf');
-                    const isImage = urlLimpia.match(/\.(jpeg|jpg|png)$/) || blob.type.includes('image');
+                    const urlSinParams = cartaUrl.toLowerCase().split('?')[0];
+                    const isPdf = urlSinParams.endsWith('.pdf') || contentType.includes('pdf');
+                    const isPng = urlSinParams.endsWith('.png') || contentType.includes('png');
+                    const isJpg = urlSinParams.match(/\.(jpeg|jpg)$/) || contentType.includes('jpg') || contentType.includes('jpeg');
 
                     const textoEtiqueta = `ID Entrada: ${idEntrada} | Remitente: ${remitenteCompleto} | Destinatario: ${destinatarioCompleto}`;
 
                     if (isPdf) {
-                        const pdfFuente = await PDFLib.PDFDocument.load(arrayBuffer);
+                        // Procesar archivo PDF
+                        const pdfFuente = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
                         const paginasCopiadas = await pdfUnificado.copyPages(pdfFuente, pdfFuente.getPageIndices());
 
                         paginasCopiadas.forEach(pagina => {
                             pdfUnificado.addPage(pagina);
                             const { width } = pagina.getSize();
                             
+                            // Colocar etiqueta en la parte inferior de la página
                             pagina.drawRectangle({
-                                x: 0, y: 0, width: width, height: 25,
-                                color: PDFLib.rgb(0.95, 0.95, 0.95), opacity: 0.9
+                                x: 0, y: 0, width: width, height: 26,
+                                color: PDFLib.rgb(0.93, 0.93, 0.93), opacity: 0.95
                             });
 
                             pagina.drawText(textoEtiqueta, {
-                                x: 15, y: 8, size: 9,
+                                x: 12, y: 8, size: 8.5,
                                 font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
                             });
                         });
 
-                    } else if (isImage) {
+                    } else if (isPng || isJpg || contentType.includes('image')) {
+                        // Procesar Imagen (JPG / PNG)
                         let imagenEmbed;
-                        if (urlLimpia.endsWith('.png') || blob.type.includes('png')) {
+                        if (isPng) {
                             imagenEmbed = await pdfUnificado.embedPng(arrayBuffer);
                         } else {
                             imagenEmbed = await pdfUnificado.embedJpg(arrayBuffer);
                         }
 
+                        // Crear página ajustada al tamaño de la imagen agregando espacio para la etiqueta
                         const pagina = pdfUnificado.addPage([imagenEmbed.width, imagenEmbed.height + 30]);
                         pagina.drawImage(imagenEmbed, {
-                            x: 0, y: 30, width: imagenEmbed.width, height: imagenEmbed.height,
+                            x: 0, y: 30, width: imagenEmbed.width, height: imagenEmbed.height
                         });
 
                         pagina.drawRectangle({
                             x: 0, y: 0, width: imagenEmbed.width, height: 30,
-                            color: PDFLib.rgb(0.95, 0.95, 0.95)
+                            color: PDFLib.rgb(0.93, 0.93, 0.93)
                         });
 
                         pagina.drawText(textoEtiqueta, {
-                            x: 15, y: 10, size: 10,
+                            x: 15, y: 10, size: 9.5,
                             font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
                         });
+
+                    } else {
+                        // Intento secundario de cargarlo como PDF si el formato no es reconocido explícitamente
+                        try {
+                            const pdfFuente = await PDFLib.PDFDocument.load(arrayBuffer);
+                            const paginasCopiadas = await pdfUnificado.copyPages(pdfFuente, pdfFuente.getPageIndices());
+                            paginasCopiadas.forEach(pagina => pdfUnificado.addPage(pagina));
+                        } catch (e) {
+                            log(`Formato no compatible para ID ${idEntrada}: ${cartaUrl}`);
+                        }
                     }
 
                 } catch (err) {
-                    log(`ERROR al procesar documento para ID ${idEntrada}: ${err.message}`);
+                    log(`ERROR al descargar/procesar ID ${idEntrada}: ${err.message}`);
                 }
             }
 
-            actualizarProgreso(95, "Compilando archivo PDF final unificado...");
+            actualizarProgreso(98, "Generando el documento PDF final unificado...");
             const pdfBytes = await pdfUnificado.save();
 
+            // Descarga del archivo final generado
             const blobFinal = new Blob([pdfBytes], { type: 'application/pdf' });
             const linkDescarga = document.createElement('a');
             linkDescarga.href = URL.createObjectURL(blobFinal);
-            linkDescarga.download = `Cartas_Unificadas_${new Date().toISOString().slice(0,10)}.pdf`;
+            linkDescarga.download = `Cartas_Unificadas_Completas_${new Date().toISOString().slice(0,10)}.pdf`;
             document.body.appendChild(linkDescarga);
             linkDescarga.click();
             document.body.removeChild(linkDescarga);
 
-            actualizarProgreso(100, `¡Proceso completado! Se unificaron los documentos exitosamente.`);
+            actualizarProgreso(100, `¡Proceso finalizado con éxito! PDF unificado generado.`);
 
         } catch (error) {
             actualizarProgreso(0, `Error general: ${error.message}`);
