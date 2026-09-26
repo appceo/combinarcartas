@@ -37,129 +37,41 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
 
-        h1 {
-            margin-top: 0;
-            color: #0f172a;
-            font-size: 1.75rem;
-            margin-bottom: 8px;
-        }
-
-        p.subtitle {
-            color: #64748b;
-            margin-bottom: 24px;
-            font-size: 0.95rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
+        h1 { margin-top: 0; color: #0f172a; font-size: 1.75rem; margin-bottom: 8px; }
+        p.subtitle { color: #64748b; margin-bottom: 24px; font-size: 0.95rem; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; }
 
         input[type="url"], input[type="file"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 0.95rem;
-            transition: border-color 0.2s;
+            width: 100%; padding: 12px; border: 1px solid var(--border-color);
+            border-radius: 6px; box-sizing: border-box; font-size: 0.95rem;
         }
 
-        input[type="url"]:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-
-        .divider {
-            text-align: center;
-            margin: 20px 0;
-            position: relative;
-        }
-
+        .divider { text-align: center; margin: 20px 0; position: relative; }
         .divider::before {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background-color: var(--border-color);
-            z-index: 1;
+            content: ""; position: absolute; top: 50%; left: 0; right: 0;
+            height: 1px; background-color: var(--border-color); z-index: 1;
         }
-
         .divider span {
-            background-color: var(--card-bg);
-            padding: 0 12px;
-            position: relative;
-            z-index: 2;
-            color: #94a3b8;
-            font-size: 0.85rem;
-            font-weight: 600;
+            background-color: var(--card-bg); padding: 0 12px; position: relative;
+            z-index: 2; color: #94a3b8; font-size: 0.85rem; font-weight: 600;
         }
 
         button {
-            width: 100%;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 14px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s;
+            width: 100%; background-color: var(--primary-color); color: white;
+            border: none; padding: 14px; font-size: 1rem; font-weight: 600;
+            border-radius: 6px; cursor: pointer; transition: background-color 0.2s;
         }
+        button:hover { background-color: var(--primary-hover); }
+        button:disabled { background-color: #94a3b8; cursor: not-allowed; }
 
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        button:disabled {
-            background-color: #94a3b8;
-            cursor: not-allowed;
-        }
-
-        .status-box {
-            margin-top: 24px;
-            padding: 16px;
-            border-radius: 6px;
-            background-color: #f1f5f9;
-            display: none;
-        }
-
-        .progress-bar-container {
-            width: 100%;
-            background-color: #e2e8f0;
-            height: 10px;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-
-        .progress-bar {
-            width: 0%;
-            height: 100%;
-            background-color: var(--primary-color);
-            transition: width 0.3s ease;
-        }
-
+        .status-box { margin-top: 24px; padding: 16px; border-radius: 6px; background-color: #f1f5f9; display: none; }
+        .progress-bar-container { width: 100%; background-color: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
+        .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease; }
         .log-list {
-            margin-top: 12px;
-            max-height: 150px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.85rem;
-            color: #334155;
-            background: #fff;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
+            margin-top: 12px; max-height: 180px; overflow-y: auto; font-family: monospace;
+            font-size: 0.85rem; color: #334155; background: #fff; padding: 8px;
+            border: 1px solid var(--border-color); border-radius: 4px;
         }
     </style>
 </head>
@@ -167,14 +79,14 @@
 
 <div class="container">
     <h1>Unificador de Cartas y Documentos</h1>
-    <p class="subtitle">Ingrese la URL de la tabla o suba el archivo CSV local para compilar todas las cartas en un solo PDF.</p>
+    <p class="subtitle">Ingrese la URL de Google Sheets o cargue el archivo CSV descargado para compilar las cartas en PDF.</p>
 
     <div class="form-group">
-        <label for="csvUrl">URL de la Tabla de Datos (CSV)</label>
-        <input type="url" id="csvUrl" placeholder="https://ejemplo.com/tabla_cartas.csv">
+        <label for="csvUrl">URL de Google Sheets o Tabla CSV</label>
+        <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing">
     </div>
 
-    <div class="divider"><span>O CARGAR ARCHIVO LOCAL</span></div>
+    <div class="divider"><span>O CARGAR ARCHIVO LOCAL (RECOMENDADO)</span></div>
 
     <div class="form-group">
         <label for="csvFile">Archivo CSV de la Tabla de Datos</label>
@@ -209,8 +121,16 @@
         }
     }
 
-    // Parser CSV Nativo (Soporta ';' y ',')
-    function parsearCSVNativo(texto) {
+    // Convertir enlace normal de Google Sheets a exportación CSV directa
+    function optimizarUrlGoogleSheets(url) {
+        if (url.includes('docs.google.com/spreadsheets')) {
+            return url.replace(/\/edit(\?.*)?$/, '/export?format=csv');
+        }
+        return url;
+    }
+
+    // Parser CSV Nativo Inteligente (Soporta comas y punto y coma)
+    function parsearCSV(texto) {
         const lineas = texto.split(/\r\n|\n/);
         if (lineas.length === 0) return [];
 
@@ -229,7 +149,9 @@
             const registro = {};
 
             encabezados.forEach((header, index) => {
-                registro[header] = valores[index] || '';
+                // Limpiar caracteres invisibles UTF-8 (BOM)
+                const headerLimpio = header.replace(/^\uFEFF/, '');
+                registro[headerLimpio] = valores[index] || '';
             });
 
             resultados.push(registro);
@@ -239,17 +161,12 @@
     }
 
     async function procesarDocumentos() {
-        if (typeof PDFLib === 'undefined') {
-            alert("Error: La librería PDFLib no se ha cargado correctamente. Verifique su conexión a internet.");
-            return;
-        }
-
-        const csvUrl = document.getElementById('csvUrl').value.trim();
+        let csvUrl = document.getElementById('csvUrl').value.trim();
         const csvFileInput = document.getElementById('csvFile').files[0];
         const btn = document.getElementById('processBtn');
 
         if (!csvUrl && !csvFileInput) {
-            alert("Por favor ingrese una URL de tabla CSV o seleccione un archivo local.");
+            alert("Por favor ingrese la URL o seleccione un archivo CSV local.");
             return;
         }
 
@@ -263,29 +180,28 @@
             if (csvFileInput) {
                 csvContent = await csvFileInput.text();
             } else {
+                csvUrl = optimizarUrlGoogleSheets(csvUrl);
+                log(`Consultando origen: ${csvUrl}`);
                 const response = await fetch(csvUrl);
-                if (!response.ok) throw new Error("No se pudo descargar el archivo CSV desde la URL especificada.");
+                if (!response.ok) throw new Error("No se pudo descargar la tabla. Verifique que la hoja de Google Sheets sea pública o use la carga de archivo local.");
                 csvContent = await response.text();
             }
 
-            // Procesar CSV usando el parser nativo
-            const registros = parsearCSVNativo(csvContent);
-            
+            const registros = parsearCSV(csvContent);
             if (!registros || registros.length === 0) {
-                throw new Error("La tabla de datos no contiene registros válidos.");
+                throw new Error("No se detectaron registros válidos en la tabla.");
             }
 
-            log(`Se encontraron ${registros.length} registros para procesar.`);
+            log(`Se leyeron correctamente ${registros.length} registros de la tabla.`);
 
-            // Crear documento PDF final unificado
             const pdfUnificado = await PDFLib.PDFDocument.create();
             const helveticaFont = await pdfUnificado.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
             for (let i = 0; i < registros.length; i++) {
                 const fila = registros[i];
-                
-                // Mapeo flexible de nombres de columna
-                const idEntrada = fila['ID DE ENTRADA'] || fila['﻿ID DE ENTRADA'] || fila['ID ENTRADA'] || fila['ID'] || `Reg-${i+1}`;
+
+                // Búsqueda de claves de columna
+                const idEntrada = fila['ID DE ENTRADA'] || fila['ID ENTRADA'] || fila['ID'] || `Reg-${i+1}`;
                 const nombreDest = fila['NOMBRE DESTINATARIO'] || '';
                 const apellidoDest = fila['APELLIDO DESTINATARIO'] || fila['APELLIDOS DESTINATARIO'] || '';
                 const nombreRem = fila['NOMBRE REMITENTE'] || '';
@@ -299,14 +215,13 @@
                 actualizarProgreso(porcentaje, `Procesando registro ${i + 1} de ${registros.length} (ID: ${idEntrada})...`);
 
                 if (!cartaUrl) {
-                    log(`ADVERTENCIA: El registro ID ${idEntrada} no tiene URL de carta. Se omitirá.`);
+                    log(`ADVERTENCIA: El registro ID ${idEntrada} no contiene enlace en la columna CARTA.`);
                     continue;
                 }
 
                 try {
-                    // Descargar el documento (PDF o Imagen) temporalmente
                     const docResp = await fetch(cartaUrl);
-                    if (!docResp.ok) throw new Error(`HTTP Error ${docResp.status}`);
+                    if (!docResp.ok) throw new Error(`HTTP ${docResp.status}`);
                     
                     const blob = await docResp.blob();
                     const arrayBuffer = await blob.arrayBuffer();
@@ -325,22 +240,14 @@
                             pdfUnificado.addPage(pagina);
                             const { width } = pagina.getSize();
                             
-                            // Etiqueta inferior
                             pagina.drawRectangle({
-                                x: 0,
-                                y: 0,
-                                width: width,
-                                height: 25,
-                                color: PDFLib.rgb(0.95, 0.95, 0.95),
-                                opacity: 0.9
+                                x: 0, y: 0, width: width, height: 25,
+                                color: PDFLib.rgb(0.95, 0.95, 0.95), opacity: 0.9
                             });
 
                             pagina.drawText(textoEtiqueta, {
-                                x: 15,
-                                y: 8,
-                                size: 9,
-                                font: helveticaFont,
-                                color: PDFLib.rgb(0.1, 0.1, 0.1)
+                                x: 15, y: 8, size: 9,
+                                font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
                             });
                         });
 
@@ -354,41 +261,28 @@
 
                         const pagina = pdfUnificado.addPage([imagenEmbed.width, imagenEmbed.height + 30]);
                         pagina.drawImage(imagenEmbed, {
-                            x: 0,
-                            y: 30,
-                            width: imagenEmbed.width,
-                            height: imagenEmbed.height,
+                            x: 0, y: 30, width: imagenEmbed.width, height: imagenEmbed.height,
                         });
 
                         pagina.drawRectangle({
-                            x: 0,
-                            y: 0,
-                            width: imagenEmbed.width,
-                            height: 30,
+                            x: 0, y: 0, width: imagenEmbed.width, height: 30,
                             color: PDFLib.rgb(0.95, 0.95, 0.95)
                         });
 
                         pagina.drawText(textoEtiqueta, {
-                            x: 15,
-                            y: 10,
-                            size: 10,
-                            font: helveticaFont,
-                            color: PDFLib.rgb(0.1, 0.1, 0.1)
+                            x: 15, y: 10, size: 10,
+                            font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
                         });
-
-                    } else {
-                        log(`Formato no reconocido para ID ${idEntrada}: ${cartaUrl}`);
                     }
 
                 } catch (err) {
-                    log(`ERROR en ID ${idEntrada}: ${err.message}`);
+                    log(`ERROR al procesar documento para ID ${idEntrada}: ${err.message}`);
                 }
             }
 
             actualizarProgreso(95, "Compilando archivo PDF final unificado...");
             const pdfBytes = await pdfUnificado.save();
 
-            // Descarga del archivo final
             const blobFinal = new Blob([pdfBytes], { type: 'application/pdf' });
             const linkDescarga = document.createElement('a');
             linkDescarga.href = URL.createObjectURL(blobFinal);
@@ -397,7 +291,7 @@
             linkDescarga.click();
             document.body.removeChild(linkDescarga);
 
-            actualizarProgreso(100, "¡Proceso completado con éxito! El PDF se ha generado y descargado.");
+            actualizarProgreso(100, `¡Proceso completado! Se unificaron los documentos exitosamente.`);
 
         } catch (error) {
             actualizarProgreso(0, `Error general: ${error.message}`);
