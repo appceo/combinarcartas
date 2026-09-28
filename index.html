@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unificador Ultra Rápido de Cartas</title>
+    <title>Unificador de Cartas - Tamaño Carta & Vertical</title>
     
-    <!-- JSZip para compresión y descompresión ultrarrápida -->
+    <!-- JSZip para descompresión de archivos ZIP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
-    <!-- PDF-Lib para manipulacion y unificacion de PDF -->
+    <!-- PDF-Lib para manipulacion, formateo y estandarizacion de PDF -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
     <style>
         :root {
             --primary-color: #2563eb;
             --primary-hover: #1d4ed8;
+            --success-color: #16a34a;
             --bg-color: #f8fafc;
             --card-bg: #ffffff;
             --text-color: #1e293b;
@@ -74,19 +75,9 @@
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; }
 
-        input[type="url"], input[type="file"] {
+        input[type="file"] {
             width: 100%; padding: 12px; border: 1px solid var(--border-color);
             border-radius: 6px; box-sizing: border-box; font-size: 0.95rem;
-        }
-
-        .divider { text-align: center; margin: 20px 0; position: relative; }
-        .divider::before {
-            content: ""; position: absolute; top: 50%; left: 0; right: 0;
-            height: 1px; background-color: var(--border-color); z-index: 1;
-        }
-        .divider span {
-            background-color: var(--card-bg); padding: 0 12px; position: relative;
-            z-index: 2; color: #94a3b8; font-size: 0.85rem; font-weight: 600;
         }
 
         button.action-btn {
@@ -95,7 +86,25 @@
             border-radius: 6px; cursor: pointer; transition: background-color 0.2s;
         }
         button.action-btn:hover { background-color: var(--primary-hover); }
-        button.action-btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
+
+        button.python-btn {
+            background-color: var(--success-color);
+            margin-bottom: 15px;
+        }
+        button.python-btn:hover { background-color: #15803d; }
+
+        .instructions {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #1e3a8a;
+        }
+
+        .instructions ol { margin: 8px 0 0 20px; padding: 0; }
+        .instructions li { margin-bottom: 6px; }
 
         .status-box { margin-top: 24px; padding: 16px; border-radius: 6px; background-color: #f1f5f9; display: none; }
         .progress-bar-container { width: 100%; background-color: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; }
@@ -110,43 +119,40 @@
 <body>
 
 <div class="container">
-    <h1>Unificador Ultra Rápido de Cartas</h1>
-    <p class="subtitle">Procesamiento paralelo optimizado de alto rendimiento.</p>
+    <h1>Unificador de Cartas y Documentos</h1>
+    <p class="subtitle">Estandarización automática a tamaño carta, orientación vertical y etiqueta legible.</p>
 
-    <!-- Navegación de Pasos -->
+    <!-- Pestañas de Navegación -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="cambiarPaso(1)">PASO 1: Descargar Cartas en ZIP</button>
+        <button class="tab-btn active" onclick="cambiarPaso(1)">PASO 1: Descargar Script de Cartas</button>
         <button class="tab-btn" onclick="cambiarPaso(2)">PASO 2: Generar PDF Unificado</button>
     </div>
 
     <!-- PASO 1 -->
     <div id="paso1" class="tab-content active">
-        <div class="form-group">
-            <label for="csvUrl">URL de la Tabla de Datos (Google Sheets / CSV)</label>
-            <input type="url" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv">
+        <div class="instructions">
+            <strong>Instrucciones para la Descarga de los Registros:</strong>
+            <ol>
+                <li>Haga clic en el botón verde para descargar el script ejecutable de Python.</li>
+                <li>Guarde la tabla de datos CSV en la misma carpeta del script con el nombre: <code>carta-mensaje-cita-con-dios-2026-09-26.csv</code></li>
+                <li>Ejecute el script en su computador para generar el paquete comprimido <code>Paquete_Cartas_Completo_243.zip</code>.</li>
+            </ol>
         </div>
 
-        <div class="divider"><span>O CARGAR ARCHIVO CSV LOCAL</span></div>
-
-        <div class="form-group">
-            <label for="csvFile">Archivo CSV Local de la Tabla de Datos</label>
-            <input type="file" id="csvFile" accept=".csv, .txt">
-        </div>
-
-        <button id="btnPaso1" class="action-btn" onclick="ejecutarPaso1()">Descargar Lote de Cartas (Rápido)</button>
+        <button class="action-btn python-btn" onclick="generarScriptPython()">Descargar Script de Python Automático (.py)</button>
     </div>
 
     <!-- PASO 2 -->
     <div id="paso2" class="tab-content">
         <div class="form-group">
-            <label for="zipFile">Seleccione el Paquete ZIP Generado en el Paso 1</label>
+            <label for="zipFile">Seleccione el Paquete ZIP Generado (Paquete_Cartas_Completo_243.zip)</label>
             <input type="file" id="zipFile" accept=".zip">
         </div>
 
-        <button id="btnPaso2" class="action-btn" onclick="ejecutarPaso2()">Generar PDF Unificado al Instante</button>
+        <button id="btnPaso2" class="action-btn" onclick="ejecutarPaso2()">Estandarizar y Generar PDF Unificado</button>
     </div>
 
-    <!-- Estado y Logs -->
+    <!-- Panel de Estado y Progreso -->
     <div id="statusBox" class="status-box">
         <span id="statusText">Iniciando proceso...</span>
         <div class="progress-bar-container">
@@ -179,154 +185,91 @@
         }
     }
 
-    function parsearCSV(texto) {
-        const lineas = texto.split(/\r\n|\n/);
-        if (lineas.length === 0) return [];
-        const primeraLinea = lineas[0];
-        const delimitador = primeraLinea.includes(';') ? ';' : ',';
-        const encabezados = primeraLinea.split(delimitador).map(h => 
-            h.trim().replace(/^"|"$/g, '').replace(/^\uFEFF/, '').toUpperCase()
-        );
+    // Generación del Script Python para descarga local segura
+    function generarScriptPython() {
+        const pythonCode = `import csv
+import zipfile
+import time
+import requests
 
-        const resultados = [];
-        for (let i = 1; i < lineas.length; i++) {
-            const linea = lineas[i].trim();
-            if (!linea) continue;
-            const valores = linea.split(delimitador).map(v => v.trim().replace(/^"|"$/g, ''));
-            const registro = {};
-            encabezados.forEach((header, index) => {
-                registro[header] = valores[index] || '';
-            });
-            resultados.push(registro);
-        }
-        return resultados;
+CSV_FILE_PATH = 'carta-mensaje-cita-con-dios-2026-09-26.csv'
+ZIP_OUTPUT_NAME = 'Paquete_Cartas_Completo_243.zip'
+
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
+
+def descargar_con_reintentos(url, max_reintentos=3):
+    url_limpia = url.replace('\\\\', '').strip()
+    for intento in range(max_reintentos):
+        try:
+            res = requests.get(url_limpia, headers=headers, timeout=15)
+            if res.status_code == 200 and len(res.content) > 0:
+                return res.content
+        except Exception:
+            time.sleep(1)
+    return None
+
+print("Iniciando procesamiento de registros...")
+
+registros_procesados = 0
+registros_exitosos = 0
+
+with zipfile.ZipFile(ZIP_OUTPUT_NAME, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+    with open(CSV_FILE_PATH, mode='r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f, delimiter=';')
+        
+        for row in reader:
+            registros_procesados += 1
+            id_entrada = row.get('ID de entrada', '').strip()
+            nombre_dest = row.get('NOMBRE DESTINATARIO', '').strip()
+            apellido_dest = row.get('APELLIDO DESTINATARIO', '').strip()
+            nombre_rem = row.get('NOMBRE REMITENTE', '').strip()
+            apellido_rem = row.get('APELLIDOS REMITENTE', '').strip()
+            carta_url = row.get('CARTA', '').strip()
+
+            destinatario = f"{nombre_dest} {apellido_dest}".strip().replace('/', '-').replace('\\\\', '-')
+            remitente = f"{nombre_rem} {apellido_rem}".strip().replace('/', '-').replace('\\\\', '-')
+
+            if not carta_url:
+                continue
+
+            ext = carta_url.split('?')[0].split('.')[-1].lower()
+            if ext not in ['pdf', 'png', 'jpg', 'jpeg']:
+                ext = 'pdf'
+
+            nombre_archivo_zip = f"{id_entrada}___{remitente}___{destinatario}.{ext}"
+
+            print(f"[{registros_procesados}] Descargando ID {id_entrada}...")
+            contenido = descargar_con_reintentos(carta_url)
+
+            if contenido:
+                zip_file.writestr(nombre_archivo_zip, contenido)
+                registros_exitosos += 1
+            else:
+                print(f"  --> ERROR al descargar ID {id_entrada}")
+
+            time.sleep(0.1)
+
+print(f"\\n¡Proceso finalizado! Descargados: {registros_exitosos}/{registros_procesados}")
+`;
+
+        const blob = new Blob([pythonCode], { type: 'text/x-python' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'descargar_cartas.py';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
-    // Descarga Anti-CORS ultrarrápida con Timeout
-    async function descargarDocumentoFast(urlOriginal) {
-        const urlLimpia = urlOriginal.replace(/\\/g, '').trim();
-        const estrategias = [
-            urlLimpia,
-            `https://corsproxy.io/?${encodeURIComponent(urlLimpia)}`,
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(urlLimpia)}`
-        ];
-
-        for (const urlIntento of estrategias) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); // Max 8s por intento
-
-                const res = await fetch(urlIntento, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (res.ok) {
-                    const blob = await res.blob();
-                    if (blob.size > 0) return blob;
-                }
-            } catch (e) {}
-        }
-        throw new Error(`Fallo en descarga: ${urlLimpia}`);
-    }
-
-    // PASO 1: Descargas Paralelas por Lotes
-    async function ejecutarPaso1() {
-        let csvUrl = document.getElementById('csvUrl').value.trim();
-        const csvFileInput = document.getElementById('csvFile').files[0];
-        const btn = document.getElementById('btnPaso1');
-
-        if (!csvUrl && !csvFileInput) {
-            alert("Por favor ingrese una URL o seleccione un archivo CSV local.");
-            return;
-        }
-
-        btn.disabled = true;
-        document.getElementById('statusBox').style.display = 'block';
-        document.getElementById('logList').innerHTML = '';
-        actualizarProgreso(0, "Leyendo tabla de datos...");
-
-        try {
-            let csvContent = "";
-            if (csvFileInput) {
-                csvContent = await csvFileInput.text();
-            } else {
-                if (csvUrl.includes('docs.google.com/spreadsheets')) {
-                    csvUrl = csvUrl.replace(/\/edit(\?.*)?$/, '/export?format=csv');
-                }
-                const response = await fetch(csvUrl);
-                if (!response.ok) throw new Error("No se pudo descargar el CSV.");
-                csvContent = await response.text();
-            }
-
-            const registros = parsearCSV(csvContent);
-            if (!registros || registros.length === 0) throw new Error("Tabla sin registros.");
-
-            log(`Procesando ${registros.length} registros en paralelo...`);
-            const zip = new JSZip();
-
-            const CONCURRENCIA = 8; // 8 descargas simultáneas
-            let completados = 0;
-
-            for (let i = 0; i < registros.length; i += CONCURRENCIA) {
-                const lote = registros.slice(i, i + CONCURRENCIA);
-
-                await Promise.all(lote.map(async (fila, idxLote) => {
-                    const idxReal = i + idxLote;
-                    const idEntrada = fila['ID DE ENTRADA'] || fila['ID ENTRADA'] || fila['ID'] || `${idxReal+1}`;
-                    const nombreDest = fila['NOMBRE DESTINATARIO'] || '';
-                    const apellidoDest = fila['APELLIDO DESTINATARIO'] || fila['APELLIDOS DESTINATARIO'] || '';
-                    const nombreRem = fila['NOMBRE REMITENTE'] || '';
-                    const apellidoRem = fila['APELLIDOS REMITENTE'] || fila['APELLIDO REMITENTE'] || '';
-                    const cartaUrl = fila['CARTA'] || fila['URL'] || fila['CARTA URL'];
-
-                    const dest = `${nombreDest} ${apellidoDest}`.trim().replace(/[/\\?%*:|"<>]/g, '');
-                    const rem = `${nombreRem} ${apellidoRem}`.trim().replace(/[/\\?%*:|"<>]/g, '');
-
-                    if (cartaUrl) {
-                        try {
-                            const blob = await descargarDocumentoFast(cartaUrl);
-                            const urlLimpia = cartaUrl.toLowerCase().split('?')[0];
-                            const ext = urlLimpia.endsWith('.png') ? 'png' : 
-                                       (urlLimpia.endsWith('.jpg') || urlLimpia.endsWith('.jpeg')) ? 'jpg' : 'pdf';
-
-                            const nombreArchivoZip = `${idEntrada}___${rem}___${dest}.${ext}`;
-                            zip.file(nombreArchivoZip, blob);
-                        } catch (err) {
-                            log(`[OMITIDO] Error ID ${idEntrada}: ${err.message}`);
-                        }
-                    }
-
-                    completados++;
-                    const porcentaje = Math.round((completados / registros.length) * 100);
-                    actualizarProgreso(porcentaje, `Descargadas ${completados} de ${registros.length} cartas...`);
-                }));
-            }
-
-            actualizarProgreso(95, "Creando paquete ZIP...");
-            const zipContent = await zip.generateAsync({ type: "blob", compression: "STORE" }); // Sin compresión pesada para máximo rendimiento
-
-            const linkDescarga = document.createElement('a');
-            linkDescarga.href = URL.createObjectURL(zipContent);
-            linkDescarga.download = `Paquete_Cartas.zip`;
-            document.body.appendChild(linkDescarga);
-            linkDescarga.click();
-            document.body.removeChild(linkDescarga);
-
-            actualizarProgreso(100, "¡Paso 1 Completado! Guarde el archivo ZIP y proceda al PASO 2.");
-
-        } catch (error) {
-            actualizarProgreso(0, `Error en Paso 1: ${error.message}`);
-        } finally {
-            btn.disabled = false;
-        }
-    }
-
-    // PASO 2: Unificación Ultra Rápida
+    // PASO 2: Procesamiento y estandarización a Carta Vertical con Etiqueta Legible
     async function ejecutarPaso2() {
         const zipInput = document.getElementById('zipFile').files[0];
         const btn = document.getElementById('btnPaso2');
 
         if (!zipInput) {
-            alert("Por favor seleccione el archivo .ZIP descargado en el Paso 1.");
+            alert("Por favor seleccione el archivo .ZIP generado.");
             return;
         }
 
@@ -344,87 +287,175 @@
                 if (!zipEntry.dir) archivos.push(zipEntry);
             });
 
-            log(`Compilando ${archivos.length} archivos en un solo PDF...`);
+            log(`Se encontraron ${archivos.length} documentos. Estandarizando a tamaño Carta Vertical...`);
 
             const pdfUnificado = await PDFLib.PDFDocument.create();
-            const helveticaFont = await pdfUnificado.embedFont(PDFLib.StandardFonts.HelveticaBold);
+            const helveticaBold = await pdfUnificado.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+            // Dimensiones estándar de papel tamaño Carta en puntos (Letter: 612 x 792 pt)
+            const PAGE_WIDTH = 612;
+            const PAGE_HEIGHT = 792;
+            const FOOTER_HEIGHT = 40; // Altura reservada para la etiqueta inferior
+            const MARGIN = 15;
 
             for (let i = 0; i < archivos.length; i++) {
                 const archivo = archivos[i];
                 const nombreArchivo = archivo.name.split('/').pop();
 
                 const porcentaje = Math.round(((i + 1) / archivos.length) * 100);
-                actualizarProgreso(porcentaje, `Unificando carta ${i + 1} de ${archivos.length}...`);
+                actualizarProgreso(porcentaje, `Procesando carta ${i + 1} de ${archivos.length}...`);
 
+                // Extracción de metadatos desde el nombre del archivo
                 const partes = nombreArchivo.replace(/\.[^/.]+$/, "").split('___');
                 const idEntrada = partes[0] || 'N/A';
-                const remitente = partes[1] || 'Sin Nombre';
-                const destinatario = partes[2] || 'Sin Nombre';
+                const remitente = partes[1] || 'No especificado';
+                const destinatario = partes[2] || 'No especificado';
 
-                const textoEtiqueta = `ID Entrada: ${idEntrada} | Remitente: ${remitente} | Destinatario: ${destinatario}`;
+                const textoEtiqueta = `ID Entrada: ${idEntrada}   |   Remitente: ${remitente}   |   Destinatario: ${destinatario}`;
 
                 const arrayBuffer = await archivo.async("arraybuffer");
                 const ext = nombreArchivo.split('.').pop().toLowerCase();
 
                 if (ext === 'pdf') {
                     const pdfFuente = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-                    const paginasCopiadas = await pdfUnificado.copyPages(pdfFuente, pdfFuente.getPageIndices());
+                    const paginasContadas = pdfFuente.getPageCount();
 
-                    paginasCopiadas.forEach(pagina => {
-                        pdfUnificado.addPage(pagina);
-                        const { width } = pagina.getSize();
+                    for (let pIndex = 0; pIndex < paginasContadas; pIndex++) {
+                        // Insertar nueva página estandarizada en tamaño Carta (Portrait)
+                        const nuevaPagina = pdfUnificado.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+                        
+                        // Incrustar la página del PDF fuente
+                        const [embeddedPage] = await pdfUnificado.embedPdf(pdfFuente, [pIndex]);
 
-                        pagina.drawRectangle({
-                            x: 0, y: 0, width: width, height: 26,
-                            color: PDFLib.rgb(0.93, 0.93, 0.93), opacity: 0.95
+                        // Dimensiones originales y rotación de la página fuente
+                        let origWidth = embeddedPage.width;
+                        let origHeight = embeddedPage.height;
+                        const pageRotation = pdfFuente.getPage(pIndex).getRotation().angle;
+
+                        // Si la página viene en horizontal o tiene rotación de 90/270°, recalcular área efectiva
+                        if (pageRotation === 90 || pageRotation === 270 || origWidth > origHeight) {
+                            if (pageRotation === 90 || pageRotation === 270) {
+                                const temp = origWidth;
+                                origWidth = origHeight;
+                                origHeight = temp;
+                            }
+                        }
+
+                        // Calcular escala proporcional para encajar en la página Carta sobre el área de la etiqueta
+                        const maxAvailWidth = PAGE_WIDTH - (MARGIN * 2);
+                        const maxAvailHeight = PAGE_HEIGHT - FOOTER_HEIGHT - (MARGIN * 2);
+
+                        const scale = Math.min(maxAvailWidth / origWidth, maxAvailHeight / origHeight);
+                        const scaledWidth = origWidth * scale;
+                        const scaledHeight = origHeight * scale;
+
+                        // Centrar el contenido horizontal y verticalmente sobre la etiqueta
+                        const xPos = (PAGE_WIDTH - scaledWidth) / 2;
+                        const yPos = FOOTER_HEIGHT + MARGIN + ((maxAvailHeight - scaledHeight) / 2);
+
+                        nuevaPagina.drawPage(embeddedPage, {
+                            x: xPos,
+                            y: yPos,
+                            xScale: scale,
+                            yScale: scale
                         });
 
-                        pagina.drawText(textoEtiqueta, {
-                            x: 12, y: 8, size: 8.5,
-                            font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
-                        });
-                    });
+                        // Dibujar Etiqueta Inferior Legible
+                        dibujarEtiquetaInferior(nuevaPagina, textoEtiqueta, helveticaBold, PAGE_WIDTH, FOOTER_HEIGHT);
+                    }
 
                 } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
+                    const nuevaPagina = pdfUnificado.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+
                     let imagenEmbed = (ext === 'png') ? 
                         await pdfUnificado.embedPng(arrayBuffer) : 
                         await pdfUnificado.embedJpg(arrayBuffer);
 
-                    const pagina = pdfUnificado.addPage([imagenEmbed.width, imagenEmbed.height + 30]);
-                    pagina.drawImage(imagenEmbed, {
-                        x: 0, y: 30, width: imagenEmbed.width, height: imagenEmbed.height
+                    // Reorientar si la imagen está en formato horizontal (Landscape)
+                    const origWidth = imagenEmbed.width;
+                    const origHeight = imagenEmbed.height;
+
+                    const maxAvailWidth = PAGE_WIDTH - (MARGIN * 2);
+                    const maxAvailHeight = PAGE_HEIGHT - FOOTER_HEIGHT - (MARGIN * 2);
+
+                    const scale = Math.min(maxAvailWidth / origWidth, maxAvailHeight / origHeight);
+                    const scaledWidth = origWidth * scale;
+                    const scaledHeight = origHeight * scale;
+
+                    const xPos = (PAGE_WIDTH - scaledWidth) / 2;
+                    const yPos = FOOTER_HEIGHT + MARGIN + ((maxAvailHeight - scaledHeight) / 2);
+
+                    nuevaPagina.drawImage(imagenEmbed, {
+                        x: xPos,
+                        y: yPos,
+                        width: scaledWidth,
+                        height: scaledHeight
                     });
 
-                    pagina.drawRectangle({
-                        x: 0, y: 0, width: imagenEmbed.width, height: 30,
-                        color: PDFLib.rgb(0.93, 0.93, 0.93)
-                    });
-
-                    pagina.drawText(textoEtiqueta, {
-                        x: 15, y: 10, size: 9.5,
-                        font: helveticaFont, color: PDFLib.rgb(0.1, 0.1, 0.1)
-                    });
+                    // Dibujar Etiqueta Inferior Legible
+                    dibujarEtiquetaInferior(nuevaPagina, textoEtiqueta, helveticaBold, PAGE_WIDTH, FOOTER_HEIGHT);
                 }
             }
 
-            actualizarProgreso(98, "Generando PDF final...");
+            actualizarProgreso(98, "Guardando archivo PDF unificado...");
             const pdfBytes = await pdfUnificado.save();
 
             const blobFinal = new Blob([pdfBytes], { type: 'application/pdf' });
             const linkDescarga = document.createElement('a');
             linkDescarga.href = URL.createObjectURL(blobFinal);
-            linkDescarga.download = `Cartas_Unificadas_Completo.pdf`;
+            linkDescarga.download = `Cartas_Unificadas_Carta_Vertical.pdf`;
             document.body.appendChild(linkDescarga);
             linkDescarga.click();
             document.body.removeChild(linkDescarga);
 
-            actualizarProgreso(100, "¡Listo! El documento PDF unificado ha sido generado.");
+            actualizarProgreso(100, "¡Proceso finalizado con éxito! El PDF en tamaño Carta Vertical fue generado.");
 
         } catch (error) {
             actualizarProgreso(0, `Error en Paso 2: ${error.message}`);
         } finally {
             btn.disabled = false;
         }
+    }
+
+    // Función auxiliar para generar la etiqueta inferior legible
+    function dibujarEtiquetaInferior(pagina, texto, fuente, anchoPagina, altoFranja) {
+        // Franja de fondo con tono gris claro
+        pagina.drawRectangle({
+            x: 0,
+            y: 0,
+            width: anchoPagina,
+            height: altoFranja,
+            color: PDFLib.rgb(0.92, 0.94, 0.96)
+        });
+
+        // Borde superior divisor fino
+        pagina.drawLine({
+            start: { x: 0, y: altoFranja },
+            end: { x: anchoPagina, y: altoFranja },
+            thickness: 1.5,
+            color: PDFLib.rgb(0.2, 0.4, 0.8)
+        });
+
+        // Ajuste dinámico de fuente para legibilidad óptima
+        let fontSize = 11;
+        const textWidth = fuente.widthOfTextAtSize(texto, fontSize);
+        const maxTextWidth = anchoPagina - 30;
+
+        if (textWidth > maxTextWidth) {
+            fontSize = Math.max(8, fontSize * (maxTextWidth / textWidth));
+        }
+
+        // Posicionamiento centrado del texto en la franja
+        const xText = (anchoPagina - fuente.widthOfTextAtSize(texto, fontSize)) / 2;
+        const yText = (altoFranja - fontSize) / 2 + 2;
+
+        pagina.drawText(texto, {
+            x: xText,
+            y: yText,
+            size: fontSize,
+            font: fuente,
+            color: PDFLib.rgb(0.05, 0.1, 0.25)
+        });
     }
 </script>
 
